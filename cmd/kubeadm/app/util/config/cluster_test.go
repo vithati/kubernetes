@@ -26,26 +26,18 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/version"
 	clientset "k8s.io/client-go/kubernetes"
 	clientsetfake "k8s.io/client-go/kubernetes/fake"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
-	"k8s.io/kubernetes/pkg/util/version"
 )
 
 var k8sVersionString = "v1.12.0"
 var k8sVersion = version.MustParseGeneric(k8sVersionString)
 var nodeName = "mynode"
 var cfgFiles = map[string][]byte{
-	"MasterConfiguration_v1alpha2": []byte(`
-apiVersion: kubeadm.k8s.io/v1alpha2
-kind: MasterConfiguration
-kubernetesVersion: ` + k8sVersionString + `
-api:
-  advertiseAddress: 1.2.3.4
-  bindPort: 1234
-`),
 	"InitConfiguration_v1alpha3": []byte(`
 apiVersion: kubeadm.k8s.io/v1alpha3
 kind: InitConfiguration
@@ -171,10 +163,7 @@ func TestLoadInitConfigurationFromFile(t *testing.T) {
 		name         string
 		fileContents []byte
 	}{
-		{
-			name:         "v1alpha2.MasterConfiguration",
-			fileContents: cfgFiles["MasterConfiguration_v1alpha2"],
-		},
+		// TODO: implemen v1beta1 tests after introducing v1beta1
 		{
 			name:         "v1alpha3.partial1",
 			fileContents: cfgFiles["InitConfiguration_v1alpha3"],
@@ -377,7 +366,7 @@ func TestGetAPIEndpoint(t *testing.T) {
 		{
 			name: "valid",
 			configMap: fakeConfigMap{
-				name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+				name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 				data: map[string]string{
 					kubeadmconstants.ClusterStatusConfigMapKey: string(cfgFiles["ClusterStatus_v1alpha3"]),
 				},
@@ -386,7 +375,7 @@ func TestGetAPIEndpoint(t *testing.T) {
 		{
 			name: "invalid - No CLusterStatus in kubeadm-config ConfigMap",
 			configMap: fakeConfigMap{
-				name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+				name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 				data: map[string]string{},
 			},
 			expectedError: true,
@@ -394,7 +383,7 @@ func TestGetAPIEndpoint(t *testing.T) {
 		{
 			name: "invalid - CLusterStatus without APIEndopoints",
 			configMap: fakeConfigMap{
-				name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+				name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 				data: map[string]string{
 					kubeadmconstants.ClusterStatusConfigMapKey: string(cfgFiles["ClusterStatus_v1alpha3_Without_APIEndpoints"]),
 				},
@@ -523,17 +512,6 @@ func TestGetInitConfigurationFromCluster(t *testing.T) {
 		newControlPlane bool
 		expectedError   bool
 	}{
-		{ //TODO: remove in V1.13
-			name: "before v1.11", // single YAML, with a v1alpha2.MasterConfiguration object (with embedded component configs)
-			configMaps: []fakeConfigMap{
-				{
-					name: kubeadmconstants.InitConfigurationConfigMap,
-					data: map[string]string{
-						kubeadmconstants.InitConfigurationConfigMapKey: string(cfgFiles["MasterConfiguration_v1alpha2"]),
-					},
-				},
-			},
-		},
 		{
 			name:          "invalid - No kubeadm-config ConfigMap",
 			expectedError: true,
@@ -542,7 +520,7 @@ func TestGetInitConfigurationFromCluster(t *testing.T) {
 			name: "invalid - No CLusterConfiguration in kubeadm-config ConfigMap",
 			configMaps: []fakeConfigMap{
 				{
-					name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+					name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 					data: map[string]string{},
 				},
 			},
@@ -552,7 +530,7 @@ func TestGetInitConfigurationFromCluster(t *testing.T) {
 			name: "valid - new control plane == false", // InitConfiguration composed with data from different places, with also node specific information from ClusterStatus and node
 			configMaps: []fakeConfigMap{
 				{
-					name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+					name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 					data: map[string]string{
 						kubeadmconstants.ClusterConfigurationConfigMapKey: string(cfgFiles["ClusterConfiguration_v1alpha3"]),
 						kubeadmconstants.ClusterStatusConfigMapKey:        string(cfgFiles["ClusterStatus_v1alpha3"]),
@@ -588,7 +566,7 @@ func TestGetInitConfigurationFromCluster(t *testing.T) {
 			name: "valid - new control plane == true", // InitConfiguration composed with data from different places, without node specific information
 			configMaps: []fakeConfigMap{
 				{
-					name: kubeadmconstants.InitConfigurationConfigMap, // ClusterConfiguration from kubeadm-config.
+					name: kubeadmconstants.KubeadmConfigConfigMap, // ClusterConfiguration from kubeadm-config.
 					data: map[string]string{
 						kubeadmconstants.ClusterConfigurationConfigMapKey: string(cfgFiles["ClusterConfiguration_v1alpha3"]),
 					},

@@ -32,7 +32,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmscheme "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/scheme"
-	kubeadmapiv1alpha2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha2"
 	kubeadmapiv1alpha3 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha3"
 	"k8s.io/kubernetes/cmd/kubeadm/app/cmd/options"
 	phaseutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/phases"
@@ -71,7 +70,7 @@ func NewCmdConfig(out io.Writer) *cobra.Command {
 			cluster. kubeadm CLI v1.8.0+ automatically creates this ConfigMap with the config used with 'kubeadm init', but if you
 			initialized your cluster using kubeadm v1.7.x or lower, you must use the 'config upload' command to create this
 			ConfigMap. This is required so that 'kubeadm upgrade' can configure your upgraded cluster correctly.
-		`), metav1.NamespaceSystem, constants.InitConfigurationConfigMap),
+		`), metav1.NamespaceSystem, constants.KubeadmConfigConfigMap),
 		// Without this callback, if a user runs just the "upload"
 		// command without a subcommand, or with an invalid subcommand,
 		// cobra will print usage information, but still exit cleanly.
@@ -99,8 +98,10 @@ func NewCmdConfigPrintDefault(out io.Writer) *cobra.Command {
 		Aliases: []string{"print-defaults"},
 		Short:   "Print the default values for a kubeadm configuration object.",
 		Long: fmt.Sprintf(dedent.Dedent(`
-			This command prints the default InitConfiguration object that is used for 'kubeadm init' and 'kubeadm upgrade',
+			This command prints objects such as the default InitConfiguration that is used for 'kubeadm init' and 'kubeadm upgrade',
 			and the default JoinConfiguration object that is used for 'kubeadm join'.
+
+			For documentation visit: https://godoc.org/k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha3
 
 			Note that sensitive values like the Bootstrap Token fields are replaced with silly values like %q in order to pass validation but
 			not perform the real computation for creating a token.
@@ -125,13 +126,13 @@ func NewCmdConfigPrintDefault(out io.Writer) *cobra.Command {
 
 func getDefaultAPIObjectBytes(apiObject string) ([]byte, error) {
 	switch apiObject {
-	case constants.InitConfigurationKind, constants.MasterConfigurationKind:
+	case constants.InitConfigurationKind:
 		return getDefaultInitConfigBytes(constants.InitConfigurationKind)
 
 	case constants.ClusterConfigurationKind:
 		return getDefaultInitConfigBytes(constants.ClusterConfigurationKind)
 
-	case constants.JoinConfigurationKind, constants.NodeConfigurationKind:
+	case constants.JoinConfigurationKind:
 		return getDefaultNodeConfigBytes()
 
 	default:
@@ -154,8 +155,9 @@ func getSupportedAPIObjects() []string {
 }
 
 // getAllAPIObjectNames returns currently supported API object names and their historical aliases
+// NB. currently there is no historical supported API objects, but we keep this function for future changes
 func getAllAPIObjectNames() []string {
-	historicAPIObjectAliases := []string{constants.MasterConfigurationKind}
+	historicAPIObjectAliases := []string{}
 	objects := getSupportedAPIObjects()
 	objects = append(objects, historicAPIObjectAliases...)
 	return objects
@@ -228,7 +230,6 @@ func NewCmdConfigMigrate(out io.Writer) *cobra.Command {
 			locally in the CLI tool without ever touching anything in the cluster.
 			In this version of kubeadm, the following API versions are supported:
 			- %s
-			- %s
 
 			Further, kubeadm can only write out config of version %q, but read both types.
 			So regardless of what version you pass to the --old-config parameter here, the API object will be
@@ -237,7 +238,7 @@ func NewCmdConfigMigrate(out io.Writer) *cobra.Command {
 
 			In other words, the output of this command is what kubeadm actually would read internally if you
 			submitted this file to "kubeadm init"
-		`), kubeadmapiv1alpha2.SchemeGroupVersion.String(), kubeadmapiv1alpha3.SchemeGroupVersion.String(), kubeadmapiv1alpha3.SchemeGroupVersion.String()),
+		`), kubeadmapiv1alpha3.SchemeGroupVersion.String(), kubeadmapiv1alpha3.SchemeGroupVersion.String()),
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(oldCfgPath) == 0 {
 				kubeadmutil.CheckErr(fmt.Errorf("The --old-config flag is mandatory"))
@@ -285,7 +286,7 @@ func NewCmdConfigView(out io.Writer, kubeConfigFile *string) *cobra.Command {
 			Using this command, you can view the ConfigMap in the cluster where the configuration for kubeadm is located.
 
 			The configuration is located in the %q namespace in the %q ConfigMap.
-		`), metav1.NamespaceSystem, constants.InitConfigurationConfigMap),
+		`), metav1.NamespaceSystem, constants.KubeadmConfigConfigMap),
 		Run: func(cmd *cobra.Command, args []string) {
 			glog.V(1).Infoln("[config] retrieving ClientSet from file")
 			client, err := kubeconfigutil.ClientSetFromFile(*kubeConfigFile)
@@ -310,7 +311,7 @@ func NewCmdConfigUploadFromFile(out io.Writer, kubeConfigFile *string) *cobra.Co
 			same config file before upgrading to v1.8 using 'kubeadm upgrade'.
 
 			The configuration is located in the %q namespace in the %q ConfigMap.
-		`), metav1.NamespaceSystem, constants.InitConfigurationConfigMap),
+		`), metav1.NamespaceSystem, constants.KubeadmConfigConfigMap),
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(cfgPath) == 0 {
 				kubeadmutil.CheckErr(fmt.Errorf("The --config flag is mandatory"))
@@ -349,7 +350,7 @@ func NewCmdConfigUploadFromFlags(out io.Writer, kubeConfigFile *string) *cobra.C
 			same flags before upgrading to v1.8 using 'kubeadm upgrade'.
 
 			The configuration is located in the %q namespace in the %q ConfigMap.
-		`), metav1.NamespaceSystem, constants.InitConfigurationConfigMap),
+		`), metav1.NamespaceSystem, constants.KubeadmConfigConfigMap),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			glog.V(1).Infoln("[config] creating new FeatureGates")
@@ -375,12 +376,12 @@ func NewCmdConfigUploadFromFlags(out io.Writer, kubeConfigFile *string) *cobra.C
 func RunConfigView(out io.Writer, client clientset.Interface) error {
 
 	glog.V(1).Infoln("[config] getting the cluster configuration")
-	cfgConfigMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(constants.InitConfigurationConfigMap, metav1.GetOptions{})
+	cfgConfigMap, err := client.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(constants.KubeadmConfigConfigMap, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	// No need to append \n as that already exists in the ConfigMap
-	fmt.Fprintf(out, "%s", cfgConfigMap.Data[constants.InitConfigurationConfigMapKey])
+	fmt.Fprintf(out, "%s", cfgConfigMap.Data[constants.ClusterConfigurationConfigMapKey])
 	return nil
 }
 

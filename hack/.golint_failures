@@ -6,7 +6,6 @@ cmd/kube-apiserver/app
 cmd/kube-controller-manager/app
 cmd/kube-proxy/app
 cmd/kubeadm/app
-cmd/kubeadm/app/apis/kubeadm/v1alpha2
 cmd/kubeadm/app/apis/kubeadm/v1alpha3
 cmd/kubeadm/app/util/config
 cmd/kubeadm/app/util/system
@@ -144,7 +143,6 @@ pkg/kubeapiserver/authenticator
 pkg/kubeapiserver/authorizer
 pkg/kubeapiserver/authorizer/modes
 pkg/kubeapiserver/options
-pkg/kubeapiserver/server
 pkg/kubectl
 pkg/kubectl/apps
 pkg/kubectl/cmd
@@ -199,12 +197,8 @@ pkg/kubelet/dockershim/network/hostport/testing
 pkg/kubelet/dockershim/network/kubenet
 pkg/kubelet/dockershim/network/testing
 pkg/kubelet/events
-pkg/kubelet/images
-pkg/kubelet/kuberuntime
-pkg/kubelet/leaky
 pkg/kubelet/lifecycle
 pkg/kubelet/metrics
-pkg/kubelet/pleg
 pkg/kubelet/pod
 pkg/kubelet/pod/testing
 pkg/kubelet/preemption
@@ -396,9 +390,7 @@ pkg/volume/configmap
 pkg/volume/csi/fake
 pkg/volume/empty_dir
 pkg/volume/fc
-pkg/volume/flexvolume
 pkg/volume/flocker
-pkg/volume/gce_pd
 pkg/volume/git_repo
 pkg/volume/host_path
 pkg/volume/iscsi
