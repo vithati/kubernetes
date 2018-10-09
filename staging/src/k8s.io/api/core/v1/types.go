@@ -1745,7 +1745,7 @@ type VolumeDevice struct {
 
 // EnvVar represents an environment variable present in a Container.
 type EnvVar struct {
-	// Name of the environment variable. Must be a C_IDENTIFIER.
+	// Name of the environment variable.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 
 	// Optional: no more than one of the following may be specified.
@@ -1828,7 +1828,7 @@ type SecretKeySelector struct {
 
 // EnvFromSource represents the source of a set of ConfigMaps
 type EnvFromSource struct {
-	// An optional identifier to prepend to each key in the ConfigMap. Must be a C_IDENTIFIER.
+	// An optional identifier to prepend to each key in the ConfigMap.
 	// +optional
 	Prefix string `json:"prefix,omitempty" protobuf:"bytes,1,opt,name=prefix"`
 	// The ConfigMap to select from
@@ -2062,9 +2062,8 @@ type Container struct {
 	// +patchStrategy=merge
 	Ports []ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the container.
-	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
-	// will be reported as an event when the container is starting. When a key exists in multiple
-	// sources, the value associated with the last source will take precedence.
+	// All invalid keys will be reported as an event when the container is starting. 
+	// When a key exists in multiple sources, the value associated with the last source will take precedence.
 	// Values defined by an Env with a duplicate key will take precedence.
 	// Cannot be updated.
 	// +optional
