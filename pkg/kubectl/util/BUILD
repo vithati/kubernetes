@@ -71,6 +71,7 @@ filegroup(
         "//pkg/kubectl/util/logs:all-srcs",
         "//pkg/kubectl/util/podutils:all-srcs",
         "//pkg/kubectl/util/slice:all-srcs",
+        "//pkg/kubectl/util/templates:all-srcs",
         "//pkg/kubectl/util/term:all-srcs",
     ],
     tags = ["automanaged"],
