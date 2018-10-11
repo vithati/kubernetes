@@ -142,12 +142,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	// Run on all Ginkgo nodes
 })
 
-// Similar to SynchornizedBeforeSuite, we want to run some operations only once (such as collecting cluster logs).
+// Similar to SynchronizedBeforeSuite, we want to run some operations only once (such as collecting cluster logs).
 // Here, the order of functions is reversed; first, the function which runs everywhere,
 // and then the function that only runs on the first Ginkgo node.
 var _ = ginkgo.SynchronizedAfterSuite(func() {
 	// Run on all Ginkgo nodes
-	framework.Logf("Running AfterSuite actions on all node")
+	framework.Logf("Running AfterSuite actions on all nodes")
 	framework.RunCleanupActions()
 }, func() {
 	// Run only Ginkgo on node 1
