@@ -1652,7 +1652,7 @@ type VolumeDevice struct {
 
 // EnvVar represents an environment variable present in a Container.
 type EnvVar struct {
-	// Required: Name of the environment variable.
+	// Required: Name of the environment variable. It should not start with a digit.
 	Name string
 	// Optional: no more than one of the following may be specified.
 	// Optional: Defaults to ""; variable references $(VAR_NAME) are expanded
