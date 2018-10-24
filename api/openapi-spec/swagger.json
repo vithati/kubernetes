@@ -81017,7 +81017,7 @@
     ],
     "properties": {
      "name": {
-      "description": "Name of the environment variable.",
+      "description": "Name of the environment variable. It should not start with a digit.",
       "type": "string"
      },
      "value": {

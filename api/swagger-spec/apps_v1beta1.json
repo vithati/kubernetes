@@ -5693,7 +5693,7 @@
     "properties": {
      "name": {
       "type": "string",
-      "description": "Name of the environment variable."
+      "description": "Name of the environment variable. It should not start with a digit."
      },
      "value": {
       "type": "string",
