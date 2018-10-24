@@ -43,7 +43,7 @@ import (
 const (
 	dnsLabelErrMsg          = "a DNS-1123 label must consist of"
 	dnsSubdomainLabelErrMsg = "a DNS-1123 subdomain"
-	envVarNameErrMsg        = "a valid environment variable name must consist of"
+	envVarNameErrMsg        = "a valid environment variable name must not start with a digit"
 )
 
 func newHostPathType(pathType string) *core.HostPathType {
@@ -4392,24 +4392,9 @@ func TestValidateEnv(t *testing.T) {
 			expectedError: "[0].name: Required value",
 		},
 		{
-			name:          "illegal character",
-			envs:          []core.EnvVar{{Name: "a!b"}},
-			expectedError: `[0].name: Invalid value: "a!b": ` + envVarNameErrMsg,
-		},
-		{
-			name:          "dot only",
-			envs:          []core.EnvVar{{Name: "."}},
-			expectedError: `[0].name: Invalid value: ".": must not be`,
-		},
-		{
-			name:          "double dots only",
-			envs:          []core.EnvVar{{Name: ".."}},
-			expectedError: `[0].name: Invalid value: "..": must not be`,
-		},
-		{
-			name:          "leading double dots",
-			envs:          []core.EnvVar{{Name: "..abc"}},
-			expectedError: `[0].name: Invalid value: "..abc": must not start with`,
+			name:          "starting with a digit",
+			envs:          []core.EnvVar{{Name: "0b"}},
+			expectedError: `[0].name: Invalid value: "0b": ` + envVarNameErrMsg,
 		},
 		{
 			name: "value and valueFrom specified",
@@ -4724,12 +4709,12 @@ func TestValidateEnvFrom(t *testing.T) {
 			name: "invalid prefix",
 			envs: []core.EnvFromSource{
 				{
-					Prefix: "a!b",
+					Prefix: "1a!b",
 					ConfigMapRef: &core.ConfigMapEnvSource{
 						LocalObjectReference: core.LocalObjectReference{Name: "abc"}},
 				},
 			},
-			expectedError: `field[0].prefix: Invalid value: "a!b": ` + envVarNameErrMsg,
+			expectedError: `field[0].prefix: Invalid value: "1a!b": ` + envVarNameErrMsg,
 		},
 		{
 			name: "zero-length name",
@@ -4755,12 +4740,12 @@ func TestValidateEnvFrom(t *testing.T) {
 			name: "invalid prefix",
 			envs: []core.EnvFromSource{
 				{
-					Prefix: "a!b",
+					Prefix: "1a!b",
 					SecretRef: &core.SecretEnvSource{
 						LocalObjectReference: core.LocalObjectReference{Name: "abc"}},
 				},
 			},
-			expectedError: `field[0].prefix: Invalid value: "a!b": ` + envVarNameErrMsg,
+			expectedError: `field[0].prefix: Invalid value: "1a!b": ` + envVarNameErrMsg,
 		},
 		{
 			name: "no refs",
@@ -5439,7 +5424,7 @@ func TestValidateContainers(t *testing.T) {
 				ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"},
 		},
 		"invalid env var name": {
-			{Name: "abc", Image: "image", Env: []core.EnvVar{{Name: "ev!1"}}, ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"},
+			{Name: "abc", Image: "image", Env: []core.EnvVar{{Name: "0ev!1"}}, ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"},
 		},
 		"unknown volume name": {
 			{Name: "abc", Image: "image", VolumeMounts: []core.VolumeMount{{Name: "anything", MountPath: "/foo"}},
