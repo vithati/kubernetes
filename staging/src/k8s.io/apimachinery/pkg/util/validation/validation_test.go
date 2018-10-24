@@ -542,10 +542,10 @@ func TestIsValidSocketAddr(t *testing.T) {
 
 func TestIsEnvVarName(t *testing.T) {
 	goodValues := []string{
-		"-", ":", "_", "a", "A", "a-",
+		"-", ":", "_", "a", "A", "a-", "$a",
 		"a.", "a..", "a:", "a_", "aa", "aA",
 		"a0", "a-a", "a.a", "a:a", "a_a", "aAz",
-		"a0a",
+		"a0a", "a9", "a a", "_9", ".9", "a9a",
 	}
 	for _, val := range goodValues {
 		if msgs := IsEnvVarName(val); len(msgs) != 0 {
@@ -554,10 +554,8 @@ func TestIsEnvVarName(t *testing.T) {
 	}
 
 	badValues := []string{
-		"", ".", "..", "..ab", "../ab", "..\ab",
-		"0", "0a", "@", "a@b", "=", "A=a",
-		"%", "a%b", "?", "a?b", "$", "a$b",
-		"^", "a^b", "&", "a&b", "*", "a*b",
+		"", "0", "1", "2", "3", "4",
+		"5", "6", "7", "8", "9", "9a",
 	}
 	for _, val := range badValues {
 		if msgs := IsEnvVarName(val); len(msgs) == 0 {
