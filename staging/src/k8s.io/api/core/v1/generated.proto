@@ -609,7 +609,6 @@ message Container {
   repeated ContainerPort ports = 6;
 
   // List of sources to populate environment variables in the container.
-  // The keys defined within a source must not start with a digit.
   // All invalid keys will be reported as an event when the container is starting.
   // When a key exists in multiple sources, the value associated with the last source will take precedence.
   // Values defined by an Env with a duplicate key will take precedence.
@@ -1058,7 +1057,7 @@ message EnvFromSource {
 
 // EnvVar represents an environment variable present in a Container.
 message EnvVar {
-  // Name of the environment variable.
+  // Name of the environment variable. It should not start with a digit.
   optional string name = 1;
 
   // Variable references $(VAR_NAME) are expanded
