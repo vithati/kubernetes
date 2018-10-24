@@ -303,20 +303,17 @@ func IsHTTPHeaderName(value string) []string {
 	return nil
 }
 
-const envVarNameFmt = "^[^0-9].*"
+const envVarNameFmt = "[^0-9].*"
 const envVarNameFmtErrMsg string = "a valid environment variable name must not start with a digit"
 
 var envVarNameRegexp = regexp.MustCompile("^" + envVarNameFmt + "$")
 
 // IsEnvVarName tests if a string is a valid environment variable name.
 func IsEnvVarName(value string) []string {
-	var errs []string
 	if !envVarNameRegexp.MatchString(value) {
-		errs = append(errs, RegexError(envVarNameFmtErrMsg, envVarNameFmt, "my.env-name", "MY_ENV.NAME", "MyEnvName1"))
+		return []string{RegexError(envVarNameFmtErrMsg, envVarNameFmt, "my.env-name", "MY_ENV.NAME", "MyEnvName1")}
 	}
-
-	errs = append(errs, hasChDirPrefix(value)...)
-	return errs
+	return nil
 }
 
 const configMapKeyFmt = `[-._a-zA-Z0-9]+`
