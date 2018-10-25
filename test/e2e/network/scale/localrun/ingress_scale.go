@@ -33,8 +33,6 @@ import (
 	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/ingress"
-	"k8s.io/kubernetes/test/e2e/framework/providers/gce"
 	"k8s.io/kubernetes/test/e2e/network/scale"
 )
 
@@ -119,7 +117,7 @@ func main() {
 		glog.Errorf("Error building GCE provider: %v", err)
 		os.Exit(1)
 	}
-	cloudConfig.Provider = gce.NewProvider(gceCloud)
+	cloudConfig.Provider = gceCloud
 
 	testSuccessFlag := true
 	defer func() {
@@ -152,7 +150,7 @@ func main() {
 
 	// Setting up a localized scale test framework.
 	f := scale.NewIngressScaleFramework(cs, ns.Name, cloudConfig)
-	f.Logger = &ingress.GLogger{}
+	f.Logger = &framework.GLogger{}
 	// Customizing scale test.
 	f.EnableTLS = enableTLS
 	f.OutputFile = outputFile

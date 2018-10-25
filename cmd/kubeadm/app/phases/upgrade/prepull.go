@@ -91,7 +91,8 @@ func (d *DaemonSetPrepuller) DeleteFunc(component string) error {
 }
 
 // PrepullImagesInParallel creates DaemonSets synchronously but waits in parallel for the images to pull
-func PrepullImagesInParallel(kubePrepuller Prepuller, timeout time.Duration, componentsToPrepull []string) error {
+func PrepullImagesInParallel(kubePrepuller Prepuller, timeout time.Duration) error {
+	componentsToPrepull := append(constants.MasterComponents, constants.Etcd)
 	fmt.Printf("[upgrade/prepull] Will prepull images for components %v\n", componentsToPrepull)
 
 	timeoutChan := time.After(timeout)

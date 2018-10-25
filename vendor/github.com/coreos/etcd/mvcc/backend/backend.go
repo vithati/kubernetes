@@ -147,11 +147,8 @@ func newBackend(bcfg BackendConfig) *backend {
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
 
-		readTx: &readTx{
-			buf: txReadBuffer{
-				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
-			},
-			buckets: make(map[string]*bolt.Bucket),
+		readTx: &readTx{buf: txReadBuffer{
+			txBuffer: txBuffer{make(map[string]*bucketBuffer)}},
 		},
 
 		stopc: make(chan struct{}),
@@ -292,7 +289,7 @@ func (b *backend) Defrag() error {
 
 func (b *backend) defrag() error {
 	now := time.Now()
-	
+
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
@@ -348,7 +345,7 @@ func (b *backend) defrag() error {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
 
-	b.readTx.reset()
+	b.readTx.buf.reset()
 	b.readTx.tx = b.unsafeBegin(false)
 
 	size := b.readTx.tx.Size()

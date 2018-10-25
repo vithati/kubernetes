@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"gopkg.in/square/go-jose.v2/jwt"
-
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,8 +87,8 @@ func TestServiceAccountTokenCreate(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	masterConfig.ExtraConfig.ServiceAccountIssuer = tokenGenerator
+	masterConfig.ExtraConfig.ServiceAccountAPIAudiences = aud
 	masterConfig.ExtraConfig.ServiceAccountMaxExpiration = maxExpirationDuration
-	masterConfig.ExtraConfig.APIAudiences = aud
 
 	master, _, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()

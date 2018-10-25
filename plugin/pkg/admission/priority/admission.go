@@ -188,12 +188,10 @@ func (p *priorityPlugin) admitPod(a admission.Attributes) error {
 		}
 		if len(pod.Spec.PriorityClassName) == 0 {
 			var err error
-			var pcName string
-			pcName, priority, err = p.getDefaultPriority()
+			priority, err = p.getDefaultPriority()
 			if err != nil {
 				return fmt.Errorf("failed to get default priority class: %v", err)
 			}
-			pod.Spec.PriorityClassName = pcName
 		} else {
 			pcName := pod.Spec.PriorityClassName
 			if !priorityClassPermittedInNamespace(pcName, a.GetNamespace()) {
@@ -262,14 +260,13 @@ func (p *priorityPlugin) getDefaultPriorityClass() (*schedulingv1beta1.PriorityC
 	return defaultPC, nil
 }
 
-func (p *priorityPlugin) getDefaultPriority() (string, int32, error) {
+func (p *priorityPlugin) getDefaultPriority() (int32, error) {
 	dpc, err := p.getDefaultPriorityClass()
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
 	if dpc != nil {
-		return dpc.Name, dpc.Value, nil
+		return dpc.Value, nil
 	}
-
-	return "", int32(scheduling.DefaultPriorityWhenNoDefaultClassExists), nil
+	return int32(scheduling.DefaultPriorityWhenNoDefaultClassExists), nil
 }

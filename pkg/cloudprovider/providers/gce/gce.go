@@ -49,7 +49,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 
-	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/cloudprovider/providers/gce/cloud"
 	"k8s.io/kubernetes/pkg/controller"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
@@ -114,7 +114,6 @@ type GCECloud struct {
 	eventRecorder    record.EventRecorder
 	projectID        string
 	region           string
-	regional         bool
 	localZone        string // The zone in which we are running
 	// managedZones will be set to the 1 zone if running a single zone cluster
 	// it will be set to ALL zones in region for any multi-zone cluster
@@ -175,7 +174,6 @@ type ConfigGlobal struct {
 	SecondaryRangeName string   `gcfg:"secondary-range-name"`
 	NodeTags           []string `gcfg:"node-tags"`
 	NodeInstancePrefix string   `gcfg:"node-instance-prefix"`
-	Regional           bool     `gcfg:"regional"`
 	Multizone          bool     `gcfg:"multizone"`
 	// ApiEndpoint is the GCE compute API endpoint to use. If this is blank,
 	// then the default endpoint is used.
@@ -204,7 +202,6 @@ type CloudConfig struct {
 	ProjectID            string
 	NetworkProjectID     string
 	Region               string
-	Regional             bool
 	Zone                 string
 	ManagedZones         []string
 	NetworkName          string
@@ -335,14 +332,9 @@ func generateCloudConfig(configFile *ConfigFile) (cloudConfig *CloudConfig, err 
 		return nil, err
 	}
 
-	// Determine if its a regional cluster
-	if configFile != nil && configFile.Global.Regional {
-		cloudConfig.Regional = true
-	}
-
 	// generate managedZones
 	cloudConfig.ManagedZones = []string{cloudConfig.Zone}
-	if configFile != nil && (configFile.Global.Multizone || configFile.Global.Regional) {
+	if configFile != nil && configFile.Global.Multizone {
 		cloudConfig.ManagedZones = nil // Use all zones in region
 	}
 
@@ -520,7 +512,6 @@ func CreateGCECloud(config *CloudConfig) (*GCECloud, error) {
 		networkProjectID:         netProjID,
 		onXPN:                    onXPN,
 		region:                   config.Region,
-		regional:                 config.Regional,
 		localZone:                config.Zone,
 		managedZones:             config.ManagedZones,
 		networkURL:               networkURL,
@@ -610,7 +601,7 @@ func tryConvertToProjectNames(configProject, configNetworkProject string, servic
 
 // Initialize takes in a clientBuilder and spawns a goroutine for watching the clusterid configmap.
 // This must be called before utilizing the funcs of gce.ClusterID
-func (gce *GCECloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
+func (gce *GCECloud) Initialize(clientBuilder controller.ControllerClientBuilder) {
 	gce.clientBuilder = clientBuilder
 	gce.client = clientBuilder.ClientOrDie("cloud-provider")
 
@@ -620,7 +611,7 @@ func (gce *GCECloud) Initialize(clientBuilder cloudprovider.ControllerClientBuil
 		gce.eventRecorder = gce.eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "gce-cloudprovider"})
 	}
 
-	go gce.watchClusterID(stop)
+	go gce.watchClusterID()
 }
 
 // LoadBalancer returns an implementation of LoadBalancer for Google Compute Engine.

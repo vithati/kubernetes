@@ -96,7 +96,7 @@ type fakeDiskManager struct {
 	detachCalled bool
 }
 
-func newFakeDiskManager() *fakeDiskManager {
+func NewFakeDiskManager() *fakeDiskManager {
 	return &fakeDiskManager{
 		tmpDir: utiltesting.MkTmpdirOrDie("fc_test"),
 	}
@@ -161,7 +161,7 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
-	fakeManager := newFakeDiskManager()
+	fakeManager := NewFakeDiskManager()
 	defer fakeManager.Cleanup()
 	fakeMounter := &mount.FakeMounter{}
 	fakeExec := mount.NewFakeExec(nil)
@@ -190,7 +190,7 @@ func doTestPlugin(t *testing.T, spec *volume.Spec) {
 		}
 	}
 
-	fakeManager2 := newFakeDiskManager()
+	fakeManager2 := NewFakeDiskManager()
 	defer fakeManager2.Cleanup()
 	unmounter, err := plug.(*fcPlugin).newUnmounterInternal("vol1", types.UID("poduid"), fakeManager2, fakeMounter)
 	if err != nil {
@@ -224,7 +224,7 @@ func doTestPluginNilMounter(t *testing.T, spec *volume.Spec) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
-	fakeManager := newFakeDiskManager()
+	fakeManager := NewFakeDiskManager()
 	defer fakeManager.Cleanup()
 	fakeMounter := &mount.FakeMounter{}
 	fakeExec := mount.NewFakeExec(nil)

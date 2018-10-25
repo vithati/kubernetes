@@ -38,8 +38,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/kubectl/util/templates"
 )
 
 var (
@@ -102,11 +102,11 @@ func NewCmdWait(restClientGetter genericclioptions.RESTClientGetter, streams gen
 	flags := NewWaitFlags(restClientGetter, streams)
 
 	cmd := &cobra.Command{
-		Use:                   "wait resource.group/name [--for=delete|--for condition=available]",
+		Use: "wait resource.group/name [--for=delete|--for condition=available]",
 		DisableFlagsInUseLine: true,
-		Short:                 "Experimental: Wait for a specific condition on one or many resources.",
-		Long:                  wait_long,
-		Example:               wait_example,
+		Short:   "Experimental: Wait for a specific condition on one or many resources.",
+		Long:    wait_long,
+		Example: wait_example,
 		Run: func(cmd *cobra.Command, args []string) {
 			o, err := flags.ToOptions(args)
 			cmdutil.CheckErr(err)

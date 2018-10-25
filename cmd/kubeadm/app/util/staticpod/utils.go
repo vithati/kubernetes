@@ -17,13 +17,11 @@ limitations under the License.
 package staticpod
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
-	"sort"
 	"strings"
 
 	"k8s.io/api/core/v1"
@@ -149,10 +147,6 @@ func VolumeMapToSlice(volumes map[string]v1.Volume) []v1.Volume {
 		v = append(v, vol)
 	}
 
-	sort.Slice(v, func(i, j int) bool {
-		return strings.Compare(v[i].Name, v[j].Name) == -1
-	})
-
 	return v
 }
 
@@ -163,10 +157,6 @@ func VolumeMountMapToSlice(volumeMounts map[string]v1.VolumeMount) []v1.VolumeMo
 	for _, volMount := range volumeMounts {
 		v = append(v, volMount)
 	}
-
-	sort.Slice(v, func(i, j int) bool {
-		return strings.Compare(v[i].Name, v[j].Name) == -1
-	})
 
 	return v
 }
@@ -297,18 +287,4 @@ func GetProbeAddress(cfg *kubeadmapi.InitConfiguration, componentName string) st
 		}
 	}
 	return "127.0.0.1"
-}
-
-// ManifestFilesAreEqual compares 2 files. It returns true if their contents are equal, false otherwise
-func ManifestFilesAreEqual(path1, path2 string) (bool, error) {
-	content1, err := ioutil.ReadFile(path1)
-	if err != nil {
-		return false, err
-	}
-	content2, err := ioutil.ReadFile(path2)
-	if err != nil {
-		return false, err
-	}
-
-	return bytes.Equal(content1, content2), nil
 }

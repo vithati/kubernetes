@@ -7,7 +7,6 @@ load(
 go_library(
     name = "go_default_library",
     srcs = [
-        "pod_port.go",
         "service_port.go",
         "umask.go",
         "umask_windows.go",
@@ -66,14 +65,10 @@ filegroup(
     name = "all-srcs",
     srcs = [
         ":package-srcs",
-        "//pkg/kubectl/util/deployment:all-srcs",
         "//pkg/kubectl/util/hash:all-srcs",
         "//pkg/kubectl/util/i18n:all-srcs",
         "//pkg/kubectl/util/logs:all-srcs",
-        "//pkg/kubectl/util/podutils:all-srcs",
-        "//pkg/kubectl/util/printers:all-srcs",
         "//pkg/kubectl/util/slice:all-srcs",
-        "//pkg/kubectl/util/templates:all-srcs",
         "//pkg/kubectl/util/term:all-srcs",
     ],
     tags = ["automanaged"],
@@ -83,7 +78,6 @@ filegroup(
 go_test(
     name = "go_default_test",
     srcs = [
-        "pod_port_test.go",
         "service_port_test.go",
         "util_test.go",
     ],

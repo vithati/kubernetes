@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeadmapiv1beta1 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
+	kubeadmapiv1alpha3 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha3"
 	"k8s.io/kubernetes/cmd/kubeadm/app/cmd/options"
 	cmdutil "k8s.io/kubernetes/cmd/kubeadm/app/cmd/util"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
@@ -49,7 +49,7 @@ var (
 
 // NewCmdUploadConfig returns the Cobra command for running the uploadconfig phase
 func NewCmdUploadConfig() *cobra.Command {
-	cfg := &kubeadmapiv1beta1.InitConfiguration{}
+	cfg := &kubeadmapiv1alpha3.InitConfiguration{}
 	kubeConfigFile := kubeadmconstants.GetAdminKubeConfigPath()
 	var cfgPath string
 
@@ -70,7 +70,8 @@ func NewCmdUploadConfig() *cobra.Command {
 
 			// KubernetesVersion is not used, but we set it explicitly to avoid the lookup
 			// of the version from the internet when executing ConfigFileAndDefaultsToInternalConfig
-			SetKubernetesVersion(cfg)
+			err = SetKubernetesVersion(client, cfg)
+			kubeadmutil.CheckErr(err)
 
 			internalcfg, err := configutil.ConfigFileAndDefaultsToInternalConfig(cfgPath, cfg)
 			kubeadmutil.CheckErr(err)

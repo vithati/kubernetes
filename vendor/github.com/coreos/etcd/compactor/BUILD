@@ -5,8 +5,6 @@ go_library(
     srcs = [
         "compactor.go",
         "doc.go",
-        "periodic.go",
-        "revision.go",
     ],
     importmap = "k8s.io/kubernetes/vendor/github.com/coreos/etcd/compactor",
     importpath = "github.com/coreos/etcd/compactor",
@@ -16,6 +14,7 @@ go_library(
         "//vendor/github.com/coreos/etcd/mvcc:go_default_library",
         "//vendor/github.com/coreos/pkg/capnslog:go_default_library",
         "//vendor/github.com/jonboulle/clockwork:go_default_library",
+        "//vendor/golang.org/x/net/context:go_default_library",
     ],
 )
 

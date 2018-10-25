@@ -17,7 +17,6 @@ limitations under the License.
 package utils
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -1027,7 +1026,7 @@ func MakePodSpec() v1.PodSpec {
 	return v1.PodSpec{
 		Containers: []v1.Container{{
 			Name:  "pause",
-			Image: "k8s.gcr.io/pause:3.1",
+			Image: "kubernetes/pause",
 			Ports: []v1.ContainerPort{{ContainerPort: 80}},
 			Resources: v1.ResourceRequirements{
 				Limits: v1.ResourceList{
@@ -1062,9 +1061,9 @@ func CreatePod(client clientset.Interface, namespace string, podCount int, podTe
 	}
 
 	if podCount < 30 {
-		workqueue.ParallelizeUntil(context.TODO(), podCount, podCount, createPodFunc)
+		workqueue.Parallelize(podCount, podCount, createPodFunc)
 	} else {
-		workqueue.ParallelizeUntil(context.TODO(), 30, podCount, createPodFunc)
+		workqueue.Parallelize(30, podCount, createPodFunc)
 	}
 	return createError
 }
@@ -1254,7 +1253,7 @@ type DaemonConfig struct {
 
 func (config *DaemonConfig) Run() error {
 	if config.Image == "" {
-		config.Image = "k8s.gcr.io/pause:3.1"
+		config.Image = "kubernetes/pause"
 	}
 	nameLabel := map[string]string{
 		"name": config.Name + "-daemon",

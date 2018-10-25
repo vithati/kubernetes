@@ -290,7 +290,6 @@ func (b *glusterfsMounter) setUpAtInternal(dir string) error {
 	var errs error
 	options := []string{}
 	hasLogFile := false
-	hasLogLevel := false
 	log := ""
 
 	if b.readOnly {
@@ -298,19 +297,13 @@ func (b *glusterfsMounter) setUpAtInternal(dir string) error {
 
 	}
 
-	// Check for log-file,log-level options existence in user supplied mount options, if provided, use those.
+	// Check logfile has been provided by user, if provided, use that as the log file.
 	for _, userOpt := range b.mountOptions {
-
-		switch {
-		case dstrings.HasPrefix(userOpt, "log-file"):
+		if dstrings.HasPrefix(userOpt, "log-file") {
 			glog.V(4).Infof("log-file mount option has provided")
 			hasLogFile = true
-
-		case dstrings.HasPrefix(userOpt, "log-level"):
-			glog.V(4).Infof("log-level mount option has provided")
-			hasLogLevel = true
+			break
 		}
-
 	}
 
 	// If logfile has not been provided, create driver specific log file.
@@ -331,9 +324,7 @@ func (b *glusterfsMounter) setUpAtInternal(dir string) error {
 
 	}
 
-	if !hasLogLevel {
-		options = append(options, "log-level=ERROR")
-	}
+	options = append(options, "log-level=ERROR")
 
 	var addrlist []string
 	if b.hosts == nil {

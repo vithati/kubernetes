@@ -29,7 +29,7 @@ import (
 	core "k8s.io/client-go/testing"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
 	kubeadmscheme "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/scheme"
-	kubeadmapiv1beta1 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
+	kubeadmapiv1alpha3 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha3"
 	kubeadmconstants "k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/apiclient"
 	configutil "k8s.io/kubernetes/cmd/kubeadm/app/util/config"
@@ -67,22 +67,22 @@ func TestUploadConfiguration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t2 *testing.T) {
-			initialcfg := &kubeadmapiv1beta1.InitConfiguration{
-				APIEndpoint: kubeadmapiv1beta1.APIEndpoint{
+			initialcfg := &kubeadmapiv1alpha3.InitConfiguration{
+				APIEndpoint: kubeadmapiv1alpha3.APIEndpoint{
 					AdvertiseAddress: "1.2.3.4",
 				},
-				ClusterConfiguration: kubeadmapiv1beta1.ClusterConfiguration{
+				ClusterConfiguration: kubeadmapiv1alpha3.ClusterConfiguration{
 					KubernetesVersion: "v1.11.10",
 				},
-				BootstrapTokens: []kubeadmapiv1beta1.BootstrapToken{
+				BootstrapTokens: []kubeadmapiv1alpha3.BootstrapToken{
 					{
-						Token: &kubeadmapiv1beta1.BootstrapTokenString{
+						Token: &kubeadmapiv1alpha3.BootstrapTokenString{
 							ID:     "abcdef",
 							Secret: "abcdef0123456789",
 						},
 					},
 				},
-				NodeRegistration: kubeadmapiv1beta1.NodeRegistrationOptions{
+				NodeRegistration: kubeadmapiv1alpha3.NodeRegistrationOptions{
 					Name:      "node-foo",
 					CRISocket: "/var/run/custom-cri.sock",
 				},
@@ -166,7 +166,7 @@ func TestGetClusterStatus(t *testing.T) {
 		expectedClusterEndpoints int
 	}{
 		{
-			name:                     "return empty ClusterStatus if cluster kubeadm-config doesn't exist (e.g init)",
+			name: "return empty ClusterStatus if cluster kubeadm-config doesn't exist (e.g init)",
 			expectedClusterEndpoints: 0,
 		},
 		{

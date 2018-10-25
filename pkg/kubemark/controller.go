@@ -99,7 +99,7 @@ func NewKubemarkController(externalClient kubeclient.Interface, externalInformer
 			nodesToDelete:     make(map[string]bool),
 			nodesToDeleteLock: sync.Mutex{},
 		},
-		rand:                   rand.New(rand.NewSource(time.Now().UnixNano())),
+		rand:                   rand.New(rand.NewSource(time.Now().UTC().UnixNano())),
 		createNodeQueue:        make(chan string, 1000),
 		nodeGroupQueueSize:     make(map[string]int),
 		nodeGroupQueueSizeLock: sync.Mutex{},

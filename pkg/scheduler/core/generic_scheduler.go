@@ -41,7 +41,6 @@ import (
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 	"k8s.io/kubernetes/pkg/scheduler/core/equivalence"
-	schedulerinternalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/pkg/scheduler/util"
@@ -96,7 +95,7 @@ func (f *FitError) Error() string {
 }
 
 type genericScheduler struct {
-	cache                    schedulerinternalcache.Cache
+	cache                    schedulercache.Cache
 	equivalenceCache         *equivalence.Cache
 	schedulingQueue          internalqueue.SchedulingQueue
 	predicates               map[string]algorithm.FitPredicate
@@ -684,7 +683,7 @@ func PrioritizeNodes(
 			}
 		}
 	}
-	workqueue.ParallelizeUntil(context.TODO(), 16, len(nodes), processNode)
+	workqueue.Parallelize(16, len(nodes), processNode)
 	for i, priorityConfig := range priorityConfigs {
 		if priorityConfig.Reduce == nil {
 			continue
@@ -915,7 +914,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 			resultLock.Unlock()
 		}
 	}
-	workqueue.ParallelizeUntil(context.TODO(), 16, len(potentialNodes), checkNode)
+	workqueue.Parallelize(16, len(potentialNodes), checkNode)
 	return nodeToVictims, nil
 }
 
@@ -1140,7 +1139,7 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 
 // NewGenericScheduler creates a genericScheduler object.
 func NewGenericScheduler(
-	cache schedulerinternalcache.Cache,
+	cache schedulercache.Cache,
 	eCache *equivalence.Cache,
 	podQueue internalqueue.SchedulingQueue,
 	predicates map[string]algorithm.FitPredicate,

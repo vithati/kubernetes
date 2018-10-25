@@ -17,7 +17,6 @@ limitations under the License.
 package scalability
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -223,14 +222,6 @@ func density30AddonResourceVerifier(numNodes int) map[string]framework.ResourceC
 	constraints["kube-scheduler"] = framework.ResourceConstraint{
 		CPUConstraint:    schedulerCPU,
 		MemoryConstraint: schedulerMem,
-	}
-	constraints["coredns"] = framework.ResourceConstraint{
-		CPUConstraint:    framework.NoCPUConstraint,
-		MemoryConstraint: 170 * (1024 * 1024),
-	}
-	constraints["kubedns"] = framework.ResourceConstraint{
-		CPUConstraint:    framework.NoCPUConstraint,
-		MemoryConstraint: 170 * (1024 * 1024),
 	}
 	return constraints
 }
@@ -860,7 +851,7 @@ var _ = SIGDescribe("Density", func() {
 						name := additionalPodsPrefix + "-" + strconv.Itoa(podIndexOffset+i+1)
 						framework.ExpectNoError(framework.DeleteRCAndWaitForGC(c, rcNameToNsMap[name], name))
 					}
-					workqueue.ParallelizeUntil(context.TODO(), 25, nodeCount, deleteRC)
+					workqueue.Parallelize(25, nodeCount, deleteRC)
 					podDeletionPhase.End()
 				}
 				close(stopCh)

@@ -845,25 +845,6 @@ func (ipc ImagePullCheck) Check() (warnings, errors []error) {
 	return warnings, errors
 }
 
-// NumCPUCheck checks if current number of CPUs is not less than required
-type NumCPUCheck struct {
-	NumCPU int
-}
-
-// Name returns the label for NumCPUCheck
-func (NumCPUCheck) Name() string {
-	return "NumCPU"
-}
-
-// Check number of CPUs required by kubeadm
-func (ncc NumCPUCheck) Check() (warnings, errors []error) {
-	numCPU := runtime.NumCPU()
-	if numCPU < ncc.NumCPU {
-		errors = append(errors, fmt.Errorf("the number of available CPUs %d is less than the required %d", numCPU, ncc.NumCPU))
-	}
-	return warnings, errors
-}
-
 // RunInitMasterChecks executes all individual, applicable to Master node checks.
 func RunInitMasterChecks(execer utilsexec.Interface, cfg *kubeadmapi.InitConfiguration, ignorePreflightErrors sets.String) error {
 	// First, check if we're root separately from the other preflight checks and fail fast
@@ -873,7 +854,6 @@ func RunInitMasterChecks(execer utilsexec.Interface, cfg *kubeadmapi.InitConfigu
 
 	manifestsDir := filepath.Join(kubeadmconstants.KubernetesDir, kubeadmconstants.ManifestsSubDirName)
 	checks := []Checker{
-		NumCPUCheck{NumCPU: kubeadmconstants.MasterNumCPU},
 		KubernetesVersionCheck{KubernetesVersion: cfg.KubernetesVersion, KubeadmVersion: kubeadmversion.Get().GitVersion},
 		FirewalldCheck{ports: []int{int(cfg.APIEndpoint.BindPort), 10250}},
 		PortOpenCheck{port: int(cfg.APIEndpoint.BindPort)},
@@ -899,7 +879,7 @@ func RunInitMasterChecks(execer utilsexec.Interface, cfg *kubeadmapi.InitConfigu
 	if cfg.Etcd.Local != nil {
 		// Only do etcd related checks when no external endpoints were specified
 		checks = append(checks,
-			PortOpenCheck{port: kubeadmconstants.EtcdListenClientPort},
+			PortOpenCheck{port: 2379},
 			DirAvailableCheck{Path: cfg.Etcd.Local.DataDir},
 		)
 	}
@@ -948,18 +928,16 @@ func RunJoinNodeChecks(execer utilsexec.Interface, cfg *kubeadmapi.JoinConfigura
 	}
 
 	addIPv6Checks := false
-	if cfg.Discovery.BootstrapToken != nil {
-		for _, server := range cfg.Discovery.BootstrapToken.APIServerEndpoints {
-			ipstr, _, err := net.SplitHostPort(server)
-			if err == nil {
-				checks = append(checks,
-					HTTPProxyCheck{Proto: "https", Host: ipstr},
-				)
-				if !addIPv6Checks {
-					if ip := net.ParseIP(ipstr); ip != nil {
-						if ip.To4() == nil && ip.To16() != nil {
-							addIPv6Checks = true
-						}
+	for _, server := range cfg.DiscoveryTokenAPIServers {
+		ipstr, _, err := net.SplitHostPort(server)
+		if err == nil {
+			checks = append(checks,
+				HTTPProxyCheck{Proto: "https", Host: ipstr},
+			)
+			if !addIPv6Checks {
+				if ip := net.ParseIP(ipstr); ip != nil {
+					if ip.To4() == nil && ip.To16() != nil {
+						addIPv6Checks = true
 					}
 				}
 			}
@@ -1011,6 +989,7 @@ func addCommonChecks(execer utilsexec.Interface, cfg kubeadmapi.CommonConfigurat
 	}
 	checks = append(checks,
 		SystemVerificationCheck{IsDocker: isDocker},
+		IsPrivilegedUserCheck{},
 		HostnameCheck{nodeName: cfg.GetNodeName()},
 		KubeletVersionCheck{KubernetesVersion: cfg.GetKubernetesVersion(), exec: execer},
 		ServiceCheck{Service: "kubelet", CheckIfActive: false},

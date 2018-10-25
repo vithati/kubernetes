@@ -20,13 +20,16 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
 	cmdtestutil "k8s.io/kubernetes/cmd/kubeadm/test/cmd"
 )
 
 func TestKubeletSubCommandsHasFlags(t *testing.T) {
 	subCmds := []*cobra.Command{
+		NewCmdKubeletWriteEnvFile(),
 		NewCmdKubeletConfigUpload(),
 		NewCmdKubeletConfigDownload(),
+		NewCmdKubeletConfigWriteToDisk(),
 		NewCmdKubeletConfigEnableDynamic(),
 	}
 
@@ -36,6 +39,12 @@ func TestKubeletSubCommandsHasFlags(t *testing.T) {
 		command         string
 		additionalFlags []string
 	}{
+		{
+			command: "write-env-file",
+			additionalFlags: []string{
+				"config",
+			},
+		},
 		{
 			command: "upload",
 			additionalFlags: []string{
@@ -48,6 +57,12 @@ func TestKubeletSubCommandsHasFlags(t *testing.T) {
 			additionalFlags: []string{
 				"kubeconfig",
 				"kubelet-version",
+			},
+		},
+		{
+			command: "write-to-disk",
+			additionalFlags: []string{
+				"config",
 			},
 		},
 		{

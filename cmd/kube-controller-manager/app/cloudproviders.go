@@ -22,7 +22,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/client-go/informers"
-	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
 // createCloudProvider helps consolidate what is needed for cloud providers, we explicitly list the things

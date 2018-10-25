@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeserializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
-	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
+	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1alpha3"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 )
 
@@ -52,20 +52,20 @@ func fuzzInitConfiguration(obj *kubeadm.InitConfiguration, c fuzz.Continue) {
 	obj.ClusterConfiguration = kubeadm.ClusterConfiguration{
 		AuditPolicyConfiguration: kubeadm.AuditPolicyConfiguration{
 			LogDir:    constants.StaticPodAuditPolicyLogDir,
-			LogMaxAge: &v1beta1.DefaultAuditPolicyLogMaxAge,
+			LogMaxAge: &v1alpha3.DefaultAuditPolicyLogMaxAge,
 		},
-		CertificatesDir: v1beta1.DefaultCertificatesDir,
-		ClusterName:     v1beta1.DefaultClusterName,
+		CertificatesDir: v1alpha3.DefaultCertificatesDir,
+		ClusterName:     v1alpha3.DefaultClusterName,
 		Etcd: kubeadm.Etcd{
 			Local: &kubeadm.LocalEtcd{
-				DataDir: v1beta1.DefaultEtcdDataDir,
+				DataDir: v1alpha3.DefaultEtcdDataDir,
 			},
 		},
-		ImageRepository:   v1beta1.DefaultImageRepository,
-		KubernetesVersion: v1beta1.DefaultKubernetesVersion,
+		ImageRepository:   v1alpha3.DefaultImageRepository,
+		KubernetesVersion: v1alpha3.DefaultKubernetesVersion,
 		Networking: kubeadm.Networking{
-			ServiceSubnet: v1beta1.DefaultServicesSubnet,
-			DNSDomain:     v1beta1.DefaultServiceDNSDomain,
+			ServiceSubnet: v1alpha3.DefaultServicesSubnet,
+			DNSDomain:     v1alpha3.DefaultServiceDNSDomain,
 		},
 	}
 	// Adds the default bootstrap token to get the round working
@@ -133,9 +133,7 @@ func fuzzJoinConfiguration(obj *kubeadm.JoinConfiguration, c fuzz.Continue) {
 	// Pinning values for fields that get defaults if fuzz value is empty string or nil (thus making the round trip test fail)
 	obj.CACertPath = "foo"
 	obj.ClusterName = "bar"
-	obj.Discovery = kubeadm.Discovery{
-		BootstrapToken:    &kubeadm.BootstrapTokenDiscovery{Token: "baz"},
-		TLSBootstrapToken: "qux",
-		Timeout:           &metav1.Duration{Duration: 1234},
-	}
+	obj.DiscoveryTimeout = &metav1.Duration{Duration: 1234}
+	obj.DiscoveryToken = "baz"
+	obj.TLSBootstrapToken = "qux"
 }

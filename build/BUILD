@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_bundle", "container_image")
+load("@io_bazel_rules_docker//docker:docker.bzl", "docker_build", "docker_bundle")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 load("@io_kubernetes_build//defs:build.bzl", "release_filegroup")
 
 filegroup(
@@ -55,14 +56,13 @@ DOCKERIZED_BINARIES = {
     },
 }
 
-[container_image(
+[docker_build(
     name = binary + "-internal",
     base = meta["base"],
     cmd = ["/usr/bin/" + binary],
     debs = [
         "//build/debs:%s.deb" % binary,
     ],
-    stamp = True,
     symlinks = {
         # Some cluster startup scripts expect to find the binaries in /usr/local/bin,
         # but the debs install the binaries into /usr/bin.
@@ -70,10 +70,12 @@ DOCKERIZED_BINARIES = {
     },
 ) for binary, meta in DOCKERIZED_BINARIES.items()]
 
-[container_bundle(
+[docker_bundle(
     name = binary,
+    # TODO(thockin): remove the google_containers name after release 1.11.
     images = {
         "k8s.gcr.io/%s:{STABLE_DOCKER_TAG}" % binary: binary + "-internal",
+        "gcr.io/google_containers/%s:{STABLE_DOCKER_TAG}" % binary: binary + "-internal",
     },
     stamp = True,
 ) for binary in DOCKERIZED_BINARIES.keys()]

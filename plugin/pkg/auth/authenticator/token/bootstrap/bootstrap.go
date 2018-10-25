@@ -20,7 +20,6 @@ Package bootstrap provides a token authenticator for TLS bootstrap secrets.
 package bootstrap
 
 import (
-	"context"
 	"crypto/subtle"
 	"fmt"
 	"regexp"
@@ -29,14 +28,13 @@ import (
 
 	"github.com/golang/glog"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
+	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/client/listers/core/internalversion"
 )
 
 // TODO: A few methods in this package is copied from other sources. Either
@@ -46,13 +44,13 @@ import (
 // NewTokenAuthenticator initializes a bootstrap token authenticator.
 //
 // Lister is expected to be for the "kube-system" namespace.
-func NewTokenAuthenticator(lister corev1listers.SecretNamespaceLister) *TokenAuthenticator {
+func NewTokenAuthenticator(lister internalversion.SecretNamespaceLister) *TokenAuthenticator {
 	return &TokenAuthenticator{lister}
 }
 
 // TokenAuthenticator authenticates bootstrap tokens from secrets in the API server.
 type TokenAuthenticator struct {
-	lister corev1listers.SecretNamespaceLister
+	lister internalversion.SecretNamespaceLister
 }
 
 // tokenErrorf prints a error message for a secret that has matched a bearer
@@ -60,7 +58,7 @@ type TokenAuthenticator struct {
 //
 //    tokenErrorf(secret, "has invalid value for key %s", key)
 //
-func tokenErrorf(s *corev1.Secret, format string, i ...interface{}) {
+func tokenErrorf(s *api.Secret, format string, i ...interface{}) {
 	format = fmt.Sprintf("Bootstrap secret %s/%s matching bearer token ", s.Namespace, s.Name) + format
 	glog.V(3).Infof(format, i...)
 }
@@ -91,7 +89,7 @@ func tokenErrorf(s *corev1.Secret, format string, i ...interface{}) {
 //
 //     ( token-id ).( token-secret )
 //
-func (t *TokenAuthenticator) AuthenticateToken(ctx context.Context, token string) (*authenticator.Response, bool, error) {
+func (t *TokenAuthenticator) AuthenticateToken(token string) (user.Info, bool, error) {
 	tokenID, tokenSecret, err := parseToken(token)
 	if err != nil {
 		// Token isn't of the correct form, ignore it.
@@ -146,16 +144,14 @@ func (t *TokenAuthenticator) AuthenticateToken(ctx context.Context, token string
 		return nil, false, nil
 	}
 
-	return &authenticator.Response{
-		User: &user.DefaultInfo{
-			Name:   bootstrapapi.BootstrapUserPrefix + string(id),
-			Groups: groups,
-		},
+	return &user.DefaultInfo{
+		Name:   bootstrapapi.BootstrapUserPrefix + string(id),
+		Groups: groups,
 	}, true, nil
 }
 
 // Copied from k8s.io/cluster-bootstrap/token/api
-func getSecretString(secret *corev1.Secret, key string) string {
+func getSecretString(secret *api.Secret, key string) string {
 	data, ok := secret.Data[key]
 	if !ok {
 		return ""
@@ -165,7 +161,7 @@ func getSecretString(secret *corev1.Secret, key string) string {
 }
 
 // Copied from k8s.io/cluster-bootstrap/token/api
-func isSecretExpired(secret *corev1.Secret) bool {
+func isSecretExpired(secret *api.Secret) bool {
 	expiration := getSecretString(secret, bootstrapapi.BootstrapTokenExpirationKey)
 	if len(expiration) > 0 {
 		expTime, err2 := time.Parse(time.RFC3339, expiration)
@@ -205,7 +201,7 @@ func parseToken(s string) (string, string, error) {
 // getGroups loads and validates the bootstrapapi.BootstrapTokenExtraGroupsKey
 // key from the bootstrap token secret, returning a list of group names or an
 // error if any of the group names are invalid.
-func getGroups(secret *corev1.Secret) ([]string, error) {
+func getGroups(secret *api.Secret) ([]string, error) {
 	// always include the default group
 	groups := sets.NewString(bootstrapapi.BootstrapDefaultGroup)
 

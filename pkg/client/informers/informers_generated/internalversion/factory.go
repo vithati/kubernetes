@@ -30,7 +30,6 @@ import (
 	internalclientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	admissionregistration "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/admissionregistration"
 	apps "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/apps"
-	auditregistration "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/auditregistration"
 	autoscaling "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/autoscaling"
 	batch "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/batch"
 	certificates "k8s.io/kubernetes/pkg/client/informers/informers_generated/internalversion/certificates"
@@ -188,7 +187,6 @@ type SharedInformerFactory interface {
 
 	Admissionregistration() admissionregistration.Interface
 	Apps() apps.Interface
-	Auditregistration() auditregistration.Interface
 	Autoscaling() autoscaling.Interface
 	Batch() batch.Interface
 	Certificates() certificates.Interface
@@ -209,10 +207,6 @@ func (f *sharedInformerFactory) Admissionregistration() admissionregistration.In
 
 func (f *sharedInformerFactory) Apps() apps.Interface {
 	return apps.New(f, f.namespace, f.tweakListOptions)
-}
-
-func (f *sharedInformerFactory) Auditregistration() auditregistration.Interface {
-	return auditregistration.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Autoscaling() autoscaling.Interface {

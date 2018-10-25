@@ -47,7 +47,7 @@ import (
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	hashutil "k8s.io/kubernetes/pkg/util/hash"
 	taintutils "k8s.io/kubernetes/pkg/util/taints"
 
@@ -90,7 +90,7 @@ var UpdateTaintBackoff = wait.Backoff{
 }
 
 var ShutdownTaint = &v1.Taint{
-	Key:    schedulerapi.TaintNodeShutdown,
+	Key:    algorithm.TaintNodeShutdown,
 	Effect: v1.TaintEffectNoSchedule,
 }
 

@@ -1,15 +1,7 @@
-apiVersion: kubeadm.k8s.io/v1beta1
+apiVersion: kubeadm.k8s.io/v1alpha2
 kind: NodeConfiguration
-caCertPath: relativepath
-discovery:
-  timeout: not-a-time
-  bootstrapToken:
-    token: invalidtoken
-    apiServerEndpoints:
-    - INVALID_URL
-    unsafeSkipCAVerification: false
-  file:
-    kubeConfigPath: relativepath
-nodeRegistration:
-  criSocket: relativepath
-  name: NODE-1
+apiEndpoint:
+  advertiseAddress: INVALID-ADDRESS-!!!!
+  bindPort: 6443
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: JoinConfiguration

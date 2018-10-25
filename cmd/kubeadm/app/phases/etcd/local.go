@@ -37,9 +37,6 @@ const (
 
 // CreateLocalEtcdStaticPodManifestFile will write local etcd static pod manifest file.
 func CreateLocalEtcdStaticPodManifestFile(manifestDir string, cfg *kubeadmapi.InitConfiguration) error {
-	if cfg.ClusterConfiguration.Etcd.External != nil {
-		return fmt.Errorf("etcd static pod manifest cannot be generated for cluster using external etcd")
-	}
 	glog.V(1).Infoln("creating local etcd static pod manifest file")
 	// gets etcd StaticPodSpec, actualized for the current InitConfiguration
 	spec := GetEtcdPodSpec(cfg)
@@ -71,7 +68,7 @@ func GetEtcdPodSpec(cfg *kubeadmapi.InitConfiguration) v1.Pod {
 			staticpodutil.NewVolumeMount(certsVolumeName, cfg.CertificatesDir+"/etcd", false),
 		},
 		LivenessProbe: staticpodutil.EtcdProbe(
-			cfg, kubeadmconstants.Etcd, kubeadmconstants.EtcdListenClientPort, cfg.CertificatesDir,
+			cfg, kubeadmconstants.Etcd, 2379, cfg.CertificatesDir,
 			kubeadmconstants.EtcdCACertName, kubeadmconstants.EtcdHealthcheckClientCertName, kubeadmconstants.EtcdHealthcheckClientKeyName,
 		),
 	}, etcdMounts)
@@ -81,10 +78,10 @@ func GetEtcdPodSpec(cfg *kubeadmapi.InitConfiguration) v1.Pod {
 func getEtcdCommand(cfg *kubeadmapi.InitConfiguration) []string {
 	defaultArguments := map[string]string{
 		"name":                        cfg.GetNodeName(),
-		"listen-client-urls":          fmt.Sprintf("https://127.0.0.1:%d", kubeadmconstants.EtcdListenClientPort),
-		"advertise-client-urls":       fmt.Sprintf("https://127.0.0.1:%d", kubeadmconstants.EtcdListenClientPort),
-		"listen-peer-urls":            fmt.Sprintf("https://127.0.0.1:%d", kubeadmconstants.EtcdListenPeerPort),
-		"initial-advertise-peer-urls": fmt.Sprintf("https://127.0.0.1:%d", kubeadmconstants.EtcdListenPeerPort),
+		"listen-client-urls":          "https://127.0.0.1:2379",
+		"advertise-client-urls":       "https://127.0.0.1:2379",
+		"listen-peer-urls":            "https://127.0.0.1:2380",
+		"initial-advertise-peer-urls": "https://127.0.0.1:2380",
 		"data-dir":                    cfg.Etcd.Local.DataDir,
 		"cert-file":                   filepath.Join(cfg.CertificatesDir, kubeadmconstants.EtcdServerCertName),
 		"key-file":                    filepath.Join(cfg.CertificatesDir, kubeadmconstants.EtcdServerKeyName),
@@ -95,7 +92,7 @@ func getEtcdCommand(cfg *kubeadmapi.InitConfiguration) []string {
 		"peer-trusted-ca-file":        filepath.Join(cfg.CertificatesDir, kubeadmconstants.EtcdCACertName),
 		"peer-client-cert-auth":       "true",
 		"snapshot-count":              "10000",
-		"initial-cluster":             fmt.Sprintf("%s=https://127.0.0.1:%d", cfg.GetNodeName(), kubeadmconstants.EtcdListenPeerPort),
+		"initial-cluster":             fmt.Sprintf("%s=https://127.0.0.1:2380", cfg.GetNodeName()),
 	}
 
 	command := []string{"etcd"}

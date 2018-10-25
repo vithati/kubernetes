@@ -15,7 +15,6 @@
 package etcdserver
 
 import (
-	"context"
 	"encoding/json"
 	"expvar"
 	"fmt"
@@ -39,7 +38,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -56,9 +54,9 @@ import (
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
-
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -84,8 +82,7 @@ const (
 	releaseDelayAfterSnapshot = 30 * time.Second
 
 	// maxPendingRevokes is the maximum number of outstanding expired lease revocations.
-	maxPendingRevokes = 16
-
+	maxPendingRevokes          = 16
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
 )
 
@@ -110,33 +107,29 @@ func init() {
 }
 
 type Response struct {
-	Term    uint64
-	Index   uint64
 	Event   *store.Event
 	Watcher store.Watcher
-	Err     error
+	err     error
 }
-
-type ServerV2 interface {
-	Server
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
-	stats.Stats
-	ClientCertAuthEnabled() bool
-}
-
-type ServerV3 interface {
-	Server
-	ID() types.ID
-	RaftTimer
-}
-
-func (s *EtcdServer) ClientCertAuthEnabled() bool { return s.Cfg.ClientCertAuthEnabled }
 
 type Server interface {
+	// Start performs any initialization of the Server necessary for it to
+	// begin serving requests. It must be called before Do or Process.
+	// Start must be non-blocking; any long-running server functionality
+	// should be implemented in goroutines.
+	Start()
+	// Stop terminates the Server and performs any necessary finalization.
+	// Do and Process cannot be called after Stop has been invoked.
+	Stop()
+	// ID returns the ID of the Server.
+	ID() types.ID
 	// Leader returns the ID of the leader Server.
 	Leader() types.ID
-
+	// Do takes a request and attempts to fulfill it, returning a Response.
+	Do(ctx context.Context, r pb.Request) (Response, error)
+	// Process takes a raft message and applies it to the server's raft state
+	// machine, respecting any timeout of the given context.
+	Process(ctx context.Context, m raftpb.Message) error
 	// AddMember attempts to add a member into the cluster. It will return
 	// ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDExists if member ID exists in the cluster.
@@ -145,6 +138,7 @@ type Server interface {
 	// return ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error)
+
 	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error)
@@ -164,8 +158,6 @@ type Server interface {
 	// the leader is etcd 2.0. etcd 2.0 leader will not update clusterVersion since
 	// this feature is introduced post 2.0.
 	ClusterVersion() *semver.Version
-	Cluster() api.Cluster
-	Alarms() []*pb.AlarmMember
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -177,10 +169,12 @@ type EtcdServer struct {
 	// consistIndex used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
 	consistIndex consistentIndex // must use atomic operations to access; keep 64-bit aligned.
-	r            raftNode        // uses 64-bit atomics; keep 64-bit aligned.
+	Cfg          *ServerConfig
 
 	readych chan struct{}
-	Cfg     ServerConfig
+	r       raftNode
+
+	snapCount uint64
 
 	w wait.Wait
 
@@ -228,7 +222,7 @@ type EtcdServer struct {
 
 	SyncTicker *time.Ticker
 	// compactor is used to auto-compact the KV.
-	compactor compactor.Compactor
+	compactor *compactor.Periodic
 
 	// peerRt used to send requests (version, lease) to peers.
 	peerRt   http.RoundTripper
@@ -255,7 +249,7 @@ type EtcdServer struct {
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
+func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	var (
@@ -413,6 +407,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	srv = &EtcdServer{
 		readych:     make(chan struct{}),
 		Cfg:         cfg,
+		snapCount:   cfg.SnapCount,
 		errorc:      make(chan error, 1),
 		store:       st,
 		snapshotter: ss,
@@ -476,15 +471,12 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		return nil, err
 	}
 	srv.authStore = auth.NewAuthStore(srv.be, tp)
-	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = compactor.New(cfg.AutoCompactionMode, num, srv.kv, srv)
-		if err != nil {
-			return nil, err
-		}
+	if h := cfg.AutoCompactionRetention; h != 0 {
+		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
 	}
 
-	srv.applyV3Base = srv.newApplierV3Backend()
+	srv.applyV3Base = &applierV3backend{srv}
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
@@ -576,16 +568,15 @@ func (s *EtcdServer) Start() {
 	s.goAttach(func() { monitorFileDescriptor(s.stopping) })
 	s.goAttach(s.monitorVersions)
 	s.goAttach(s.linearizableReadLoop)
-	s.goAttach(s.monitorKVHash)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
 // modify a server's fields after it has been sent to Start.
 // This function is just used for testing.
 func (s *EtcdServer) start() {
-	if s.Cfg.SnapCount == 0 {
+	if s.snapCount == 0 {
 		plog.Infof("set snapshot count to default %d", DefaultSnapCount)
-		s.Cfg.SnapCount = DefaultSnapCount
+		s.snapCount = DefaultSnapCount
 	}
 	s.w = wait.New()
 	s.applyWait = wait.NewTimeList()
@@ -628,27 +619,14 @@ func (s *EtcdServer) purgeFile() {
 
 func (s *EtcdServer) ID() types.ID { return s.id }
 
-func (s *EtcdServer) Cluster() api.Cluster { return s.cluster }
-
-func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
-
-type ServerPeer interface {
-	ServerV2
-	RaftHandler() http.Handler
-	LeaseHandler() http.Handler
-}
-
-func (s *EtcdServer) LeaseHandler() http.Handler {
-	if s.lessor == nil {
-		return nil
-	}
-	return leasehttp.NewHandler(s.lessor, s.ApplyWait)
-}
+func (s *EtcdServer) Cluster() *membership.RaftCluster { return s.cluster }
 
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
 
-// Process takes a raft message and applies it to the server's raft state
-// machine, respecting any timeout of the given context.
+func (s *EtcdServer) Lessor() lease.Lessor { return s.lessor }
+
+func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
+
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.cluster.IsIDRemoved(types.ID(m.From)) {
 		plog.Warningf("reject message from removed member %s", types.ID(m.From).String())
@@ -813,8 +791,7 @@ func (s *EtcdServer) run() {
 					}
 					lid := lease.ID
 					s.goAttach(func() {
-						ctx := s.authStore.WithRoot(s.ctx)
-						_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
+						_, lerr := s.LeaseRevoke(s.ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
 						if lerr == nil {
 							leaseExpired.Inc()
 						} else {
@@ -980,7 +957,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
-	if ep.appliedi-ep.snapi <= s.Cfg.SnapCount {
+	if ep.appliedi-ep.snapi <= s.snapCount {
 		return
 	}
 
@@ -997,8 +974,9 @@ func (s *EtcdServer) isLeader() bool {
 	return uint64(s.ID()) == s.Lead()
 }
 
-// MoveLeader transfers the leader to the given transferee.
-func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) error {
+// transferLeadership transfers the leader to the given transferee.
+// TODO: maybe expose to client?
+func (s *EtcdServer) transferLeadership(ctx context.Context, lead, transferee uint64) error {
 	now := time.Now()
 	interval := time.Duration(s.Cfg.TickMs) * time.Millisecond
 
@@ -1037,7 +1015,7 @@ func (s *EtcdServer) TransferLeadership() error {
 
 	tm := s.Cfg.ReqTimeout()
 	ctx, cancel := context.WithTimeout(s.ctx, tm)
-	err := s.MoveLeader(ctx, s.Lead(), uint64(transferee))
+	err := s.transferLeadership(ctx, s.Lead(), uint64(transferee))
 	cancel()
 	return err
 }
@@ -1056,8 +1034,6 @@ func (s *EtcdServer) HardStop() {
 // Stop should be called after a Start(s), otherwise it will block forever.
 // When stopping leader, Stop transfers its leadership to one of its peers
 // before stopping the server.
-// Stop terminates the Server and performs any necessary finalization.
-// Do and Process cannot be called after Stop has been invoked.
 func (s *EtcdServer) Stop() {
 	if err := s.TransferLeadership(); err != nil {
 		plog.Warningf("%s failed to transfer leadership (%v)", s.ID(), err)
@@ -1388,13 +1364,12 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	var raftReq pb.InternalRaftRequest
 	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
 		var r pb.Request
-		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
+		pbutil.MustUnmarshal(&r, e.Data)
+		s.w.Trigger(r.ID, s.applyV2Request(&r))
 		return
 	}
 	if raftReq.V2 != nil {
-		req := (*RequestV2)(raftReq.V2)
+		req := raftReq.V2
 		s.w.Trigger(req.ID, s.applyV2Request(req))
 		return
 	}
@@ -1696,9 +1671,6 @@ func (s *EtcdServer) restoreAlarms() error {
 	if len(as.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.applyV3 = newApplierV3Capped(s.applyV3)
 	}
-	if len(as.Get(pb.AlarmType_CORRUPT)) > 0 {
-		s.applyV3 = newApplierV3Corrupt(s.applyV3)
-	}
 	return nil
 }
 
@@ -1736,8 +1708,4 @@ func (s *EtcdServer) goAttach(f func()) {
 		defer s.wg.Done()
 		f()
 	}()
-}
-
-func (s *EtcdServer) Alarms() []*pb.AlarmMember {
-	return s.alarmStore.Get(pb.AlarmType_NONE)
 }

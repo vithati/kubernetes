@@ -40,6 +40,8 @@ import (
 	"k8s.io/client-go/util/retry"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	azurecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
+	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 	testutils "k8s.io/kubernetes/test/utils"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 
@@ -1372,7 +1374,23 @@ func VerifyServeHostnameServiceDown(c clientset.Interface, host string, serviceI
 }
 
 func CleanupServiceResources(c clientset.Interface, loadBalancerName, region, zone string) {
-	TestContext.CloudConfig.Provider.CleanupServiceResources(c, loadBalancerName, region, zone)
+	if TestContext.Provider == "gce" || TestContext.Provider == "gke" {
+		CleanupServiceGCEResources(c, loadBalancerName, region, zone)
+	}
+
+	// TODO: we need to add this function with other cloud providers, if there is a need.
+}
+
+func CleanupServiceGCEResources(c clientset.Interface, loadBalancerName, region, zone string) {
+	if pollErr := wait.Poll(5*time.Second, LoadBalancerCleanupTimeout, func() (bool, error) {
+		if err := CleanupGCEResources(c, loadBalancerName, region, zone); err != nil {
+			Logf("Still waiting for glbc to cleanup: %v", err)
+			return false, nil
+		}
+		return true, nil
+	}); pollErr != nil {
+		Failf("Failed to cleanup service GCE resources.")
+	}
 }
 
 func DescribeSvc(ns string) {
@@ -1406,9 +1424,29 @@ func CreateServiceSpec(serviceName, externalName string, isHeadless bool, select
 }
 
 // EnableAndDisableInternalLB returns two functions for enabling and disabling the internal load balancer
-// setting for the supported cloud providers (currently GCE/GKE and Azure) and empty functions for others.
+// setting for the supported cloud providers: GCE/GKE and Azure
 func EnableAndDisableInternalLB() (enable func(svc *v1.Service), disable func(svc *v1.Service)) {
-	return TestContext.CloudConfig.Provider.EnableAndDisableInternalLB()
+	enable = func(svc *v1.Service) {}
+	disable = func(svc *v1.Service) {}
+
+	switch TestContext.Provider {
+	case "gce", "gke":
+		enable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{gcecloud.ServiceAnnotationLoadBalancerType: string(gcecloud.LBTypeInternal)}
+		}
+		disable = func(svc *v1.Service) {
+			delete(svc.ObjectMeta.Annotations, gcecloud.ServiceAnnotationLoadBalancerType)
+		}
+	case "azure":
+		enable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{azurecloud.ServiceAnnotationLoadBalancerInternal: "true"}
+		}
+		disable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{azurecloud.ServiceAnnotationLoadBalancerInternal: "false"}
+		}
+	}
+
+	return
 }
 
 func GetServiceLoadBalancerCreationTimeout(cs clientset.Interface) time.Duration {
@@ -1485,7 +1523,7 @@ func CheckAffinity(jig *ServiceTestJig, execPod *v1.Pod, targetIp string, target
 		}
 		if shouldHold {
 			if !transitionState && !affinityHolds {
-				return true, fmt.Errorf("Affinity should hold but didn't.")
+				return true, fmt.Errorf("Affintity should hold but didn't.")
 			}
 			if trackerFulfilled && affinityHolds {
 				return true, nil
@@ -1502,9 +1540,9 @@ func CheckAffinity(jig *ServiceTestJig, execPod *v1.Pod, targetIp string, target
 				checkAffinityFailed(tracker, fmt.Sprintf("Connection to %s timed out or not enough responses.", targetIpPort))
 			}
 			if shouldHold {
-				checkAffinityFailed(tracker, "Affinity should hold but didn't.")
+				checkAffinityFailed(tracker, "Affintity should hold but didn't.")
 			} else {
-				checkAffinityFailed(tracker, "Affinity shouldn't hold but did.")
+				checkAffinityFailed(tracker, "Affintity shouldn't hold but did.")
 			}
 			return true
 		}

@@ -40,14 +40,14 @@ type CrossRequestRetryDelay struct {
 	backoff Backoff
 }
 
-// NewCrossRequestRetryDelay creates a new CrossRequestRetryDelay
+// Create a new CrossRequestRetryDelay
 func NewCrossRequestRetryDelay() *CrossRequestRetryDelay {
 	c := &CrossRequestRetryDelay{}
 	c.backoff.init(decayIntervalSeconds, decayFraction, maxDelay)
 	return c
 }
 
-// BeforeSign is added to the Sign chain; called before each request
+// Added to the Sign chain; called before each request
 func (c *CrossRequestRetryDelay) BeforeSign(r *request.Request) {
 	now := time.Now()
 	delay := c.backoff.ComputeDelayForRequest(now)
@@ -84,7 +84,7 @@ func describeRequest(r *request.Request) string {
 	return service + "::" + operationName(r)
 }
 
-// AfterRetry is added to the AfterRetry chain; called after any error
+// Added to the AfterRetry chain; called after any error
 func (c *CrossRequestRetryDelay) AfterRetry(r *request.Request) {
 	if r.Error == nil {
 		return
@@ -126,8 +126,7 @@ func (b *Backoff) init(decayIntervalSeconds int, decayFraction float64, maxDelay
 	b.maxDelay = maxDelay
 }
 
-// ComputeDelayForRequest computes the delay required for a request, also
-// updates internal state to count this request
+// Computes the delay required for a request, also updating internal state to count this request
 func (b *Backoff) ComputeDelayForRequest(now time.Time) time.Duration {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
@@ -166,7 +165,7 @@ func (b *Backoff) ComputeDelayForRequest(now time.Time) time.Duration {
 	return time.Second * time.Duration(int(delay.Seconds()))
 }
 
-// ReportError is called when we observe a throttling error
+// Called when we observe a throttling error
 func (b *Backoff) ReportError() {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()

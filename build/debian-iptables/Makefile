@@ -16,12 +16,12 @@
 
 REGISTRY?="staging-k8s.gcr.io"
 IMAGE=$(REGISTRY)/debian-iptables
-TAG?=v11.0
+TAG?=v10.2
 ARCH?=amd64
 ALL_ARCH = amd64 arm arm64 ppc64le s390x
 TEMP_DIR:=$(shell mktemp -d)
 
-BASEIMAGE?=k8s.gcr.io/debian-base-$(ARCH):0.4.0
+BASEIMAGE?=k8s.gcr.io/debian-base-$(ARCH):0.3.2
 
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
@@ -55,6 +55,6 @@ all-push: all-push-images push-manifest
 push-manifest:
 	docker manifest create --amend $(IMAGE):$(TAG) $(shell echo $(ALL_ARCH) | sed -e "s~[^ ]*~$(IMAGE)\-&:$(TAG)~g")
 	@for arch in $(ALL_ARCH); do docker manifest annotate --arch $${arch} ${IMAGE}:${TAG} ${IMAGE}-$${arch}:${TAG}; done
-	docker manifest push --purge ${IMAGE}:${TAG}
+	docker manifest push ${IMAGE}:${TAG}
 
 all: all-push

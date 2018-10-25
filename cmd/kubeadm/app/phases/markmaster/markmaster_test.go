@@ -140,7 +140,7 @@ func TestMarkMaster(t *testing.T) {
 
 			if req.URL.Path != "/api/v1/nodes/"+hostname {
 				t.Errorf("MarkMaster(%s): request for unexpected HTTP resource: %v", tc.name, req.URL.Path)
-				http.Error(w, "", http.StatusNotFound)
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 
@@ -150,7 +150,7 @@ func TestMarkMaster(t *testing.T) {
 				patchRequest = toString(req.Body)
 			default:
 				t.Errorf("MarkMaster(%s): request for unexpected HTTP verb: %v", tc.name, req.Method)
-				http.Error(w, "", http.StatusNotFound)
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 

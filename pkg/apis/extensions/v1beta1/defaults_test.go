@@ -40,6 +40,7 @@ import (
 func TestSetDefaultDaemonSetSpec(t *testing.T) {
 	defaultLabels := map[string]string{"foo": "bar"}
 	period := int64(v1.DefaultTerminationGracePeriodSeconds)
+	enableServiceLinks := v1.DefaultEnableServiceLinks
 	defaultTemplate := v1.PodTemplateSpec{
 		Spec: v1.PodSpec{
 			DNSPolicy:                     v1.DNSClusterFirst,
@@ -47,6 +48,7 @@ func TestSetDefaultDaemonSetSpec(t *testing.T) {
 			SecurityContext:               &v1.PodSecurityContext{},
 			TerminationGracePeriodSeconds: &period,
 			SchedulerName:                 api.DefaultSchedulerName,
+			EnableServiceLinks:            &enableServiceLinks,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: defaultLabels,
@@ -59,6 +61,7 @@ func TestSetDefaultDaemonSetSpec(t *testing.T) {
 			SecurityContext:               &v1.PodSecurityContext{},
 			TerminationGracePeriodSeconds: &period,
 			SchedulerName:                 api.DefaultSchedulerName,
+			EnableServiceLinks:            &enableServiceLinks,
 		},
 	}
 	tests := []struct {
@@ -164,6 +167,7 @@ func TestSetDefaultDeployment(t *testing.T) {
 	defaultIntOrString := intstr.FromInt(1)
 	differentIntOrString := intstr.FromInt(5)
 	period := int64(v1.DefaultTerminationGracePeriodSeconds)
+	enableServiceLinks := v1.DefaultEnableServiceLinks
 	defaultTemplate := v1.PodTemplateSpec{
 		Spec: v1.PodSpec{
 			DNSPolicy:                     v1.DNSClusterFirst,
@@ -171,6 +175,7 @@ func TestSetDefaultDeployment(t *testing.T) {
 			SecurityContext:               &v1.PodSecurityContext{},
 			TerminationGracePeriodSeconds: &period,
 			SchedulerName:                 api.DefaultSchedulerName,
+			EnableServiceLinks:            &enableServiceLinks,
 		},
 	}
 	tests := []struct {
@@ -191,7 +196,6 @@ func TestSetDefaultDeployment(t *testing.T) {
 					},
 					Template:                defaultTemplate,
 					ProgressDeadlineSeconds: utilpointer.Int32Ptr(math.MaxInt32),
-					RevisionHistoryLimit:    utilpointer.Int32Ptr(math.MaxInt32),
 				},
 			},
 		},
@@ -218,7 +222,6 @@ func TestSetDefaultDeployment(t *testing.T) {
 					},
 					Template:                defaultTemplate,
 					ProgressDeadlineSeconds: utilpointer.Int32Ptr(math.MaxInt32),
-					RevisionHistoryLimit:    utilpointer.Int32Ptr(math.MaxInt32),
 				},
 			},
 		},
@@ -244,7 +247,6 @@ func TestSetDefaultDeployment(t *testing.T) {
 					},
 					Template:                defaultTemplate,
 					ProgressDeadlineSeconds: utilpointer.Int32Ptr(math.MaxInt32),
-					RevisionHistoryLimit:    utilpointer.Int32Ptr(math.MaxInt32),
 				},
 			},
 		},
@@ -265,7 +267,6 @@ func TestSetDefaultDeployment(t *testing.T) {
 					},
 					Template:                defaultTemplate,
 					ProgressDeadlineSeconds: utilpointer.Int32Ptr(math.MaxInt32),
-					RevisionHistoryLimit:    utilpointer.Int32Ptr(math.MaxInt32),
 				},
 			},
 		},
@@ -287,7 +288,6 @@ func TestSetDefaultDeployment(t *testing.T) {
 					},
 					Template:                defaultTemplate,
 					ProgressDeadlineSeconds: utilpointer.Int32Ptr(30),
-					RevisionHistoryLimit:    utilpointer.Int32Ptr(math.MaxInt32),
 				},
 			},
 		},

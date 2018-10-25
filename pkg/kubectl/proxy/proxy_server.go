@@ -140,7 +140,8 @@ func (f *FilterServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	glog.V(3).Infof("Filter rejecting %v %v %v", req.Method, req.URL.Path, host)
-	http.Error(rw, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	rw.WriteHeader(http.StatusForbidden)
+	rw.Write([]byte("<h3>Unauthorized</h3>"))
 }
 
 // Server is a http.Handler which proxies Kubernetes APIs to remote API server.

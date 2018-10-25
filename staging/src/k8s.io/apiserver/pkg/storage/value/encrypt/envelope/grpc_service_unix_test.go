@@ -160,6 +160,10 @@ func TestUnsupportedVersion(t *testing.T) {
 	}
 }
 
+func TestConcurrentAccess(t *testing.T) {
+
+}
+
 // Normal encryption and decryption operation.
 func TestGRPCService(t *testing.T) {
 	// Start a test gRPC server.
@@ -204,14 +208,14 @@ func TestGRPCServiceConcurrentAccess(t *testing.T) {
 	defer f.server.Stop()
 
 	// Create the gRPC client service.
-	service, err := NewGRPCService(endpoint, 15*time.Second)
+	service, err := NewGRPCService(endpoint, 1*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create envelope service, error: %v", err)
 	}
 	defer destroyService(service)
 
 	var wg sync.WaitGroup
-	n := 100
+	n := 1000
 	wg.Add(n)
 	for i := 0; i < n; i++ {
 		go func() {

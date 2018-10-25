@@ -28,12 +28,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
+	"k8s.io/kubernetes/pkg/apis/policy"
 	"k8s.io/kubernetes/pkg/security/apparmor"
 	"k8s.io/kubernetes/pkg/security/podsecuritypolicy/seccomp"
 	psputil "k8s.io/kubernetes/pkg/security/podsecuritypolicy/util"
@@ -52,7 +52,6 @@ func TestDefaultPodSecurityContextNonmutating(t *testing.T) {
 	}
 
 	// Create a PSP with strategies that will populate a blank psc
-	allowPrivilegeEscalation := true
 	createPSP := func() *policy.PodSecurityPolicy {
 		return &policy.PodSecurityPolicy{
 			ObjectMeta: metav1.ObjectMeta{
@@ -62,12 +61,9 @@ func TestDefaultPodSecurityContextNonmutating(t *testing.T) {
 				},
 			},
 			Spec: policy.PodSecurityPolicySpec{
-				AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+				AllowPrivilegeEscalation: true,
 				RunAsUser: policy.RunAsUserStrategyOptions{
 					Rule: policy.RunAsUserStrategyRunAsAny,
-				},
-				RunAsGroup: &policy.RunAsGroupStrategyOptions{
-					Rule: policy.RunAsGroupStrategyRunAsAny,
 				},
 				SELinux: policy.SELinuxStrategyOptions{
 					Rule: policy.SELinuxStrategyRunAsAny,
@@ -127,7 +123,6 @@ func TestDefaultContainerSecurityContextNonmutating(t *testing.T) {
 		}
 
 		// Create a PSP with strategies that will populate a blank security context
-		allowPrivilegeEscalation := true
 		createPSP := func() *policy.PodSecurityPolicy {
 			return &policy.PodSecurityPolicy{
 				ObjectMeta: metav1.ObjectMeta{
@@ -138,12 +133,9 @@ func TestDefaultContainerSecurityContextNonmutating(t *testing.T) {
 					},
 				},
 				Spec: policy.PodSecurityPolicySpec{
-					AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+					AllowPrivilegeEscalation: true,
 					RunAsUser: policy.RunAsUserStrategyOptions{
 						Rule: policy.RunAsUserStrategyRunAsAny,
-					},
-					RunAsGroup: &policy.RunAsGroupStrategyOptions{
-						Rule: policy.RunAsGroupStrategyRunAsAny,
 					},
 					SELinux: policy.SELinuxStrategyOptions{
 						Rule: policy.SELinuxStrategyRunAsAny,
@@ -233,7 +225,7 @@ func TestValidatePodSecurityContextFailures(t *testing.T) {
 	failNilSELinuxPod := defaultPod()
 	failSELinuxPSP := defaultPSP()
 	failSELinuxPSP.Spec.SELinux.Rule = policy.SELinuxStrategyMustRunAs
-	failSELinuxPSP.Spec.SELinux.SELinuxOptions = &v1.SELinuxOptions{
+	failSELinuxPSP.Spec.SELinux.SELinuxOptions = &api.SELinuxOptions{
 		Level: "foo",
 	}
 
@@ -499,7 +491,7 @@ func TestValidateContainerFailures(t *testing.T) {
 	failSELinuxPSP := defaultPSP()
 	failSELinuxPSP.Spec.SELinux = policy.SELinuxStrategyOptions{
 		Rule: policy.SELinuxStrategyMustRunAs,
-		SELinuxOptions: &v1.SELinuxOptions{
+		SELinuxOptions: &api.SELinuxOptions{
 			Level: "foo",
 		},
 	}
@@ -695,7 +687,7 @@ func TestValidatePodSecurityContextSuccess(t *testing.T) {
 	}
 	seLinuxPSP := defaultPSP()
 	seLinuxPSP.Spec.SELinux.Rule = policy.SELinuxStrategyMustRunAs
-	seLinuxPSP.Spec.SELinux.SELinuxOptions = &v1.SELinuxOptions{
+	seLinuxPSP.Spec.SELinux.SELinuxOptions = &api.SELinuxOptions{
 		User:  "user",
 		Role:  "role",
 		Type:  "type",
@@ -936,7 +928,7 @@ func TestValidateContainerSuccess(t *testing.T) {
 	seLinuxPSP := defaultPSP()
 	seLinuxPSP.Spec.SELinux = policy.SELinuxStrategyOptions{
 		Rule: policy.SELinuxStrategyMustRunAs,
-		SELinuxOptions: &v1.SELinuxOptions{
+		SELinuxOptions: &api.SELinuxOptions{
 			Level: "foo",
 		},
 	}
@@ -961,7 +953,7 @@ func TestValidateContainerSuccess(t *testing.T) {
 	privPod.Spec.Containers[0].SecurityContext.Privileged = &priv
 
 	capsPSP := defaultPSP()
-	capsPSP.Spec.AllowedCapabilities = []v1.Capability{"foo"}
+	capsPSP.Spec.AllowedCapabilities = []api.Capability{"foo"}
 	capsPod := defaultPod()
 	capsPod.Spec.Containers[0].SecurityContext.Capabilities = &api.Capabilities{
 		Add: []api.Capability{"foo"},
@@ -969,7 +961,7 @@ func TestValidateContainerSuccess(t *testing.T) {
 
 	// pod should be able to request caps that are in the required set even if not specified in the allowed set
 	requiredCapsPSP := defaultPSP()
-	requiredCapsPSP.Spec.DefaultAddCapabilities = []v1.Capability{"foo"}
+	requiredCapsPSP.Spec.DefaultAddCapabilities = []api.Capability{"foo"}
 	requiredCapsPod := defaultPod()
 	requiredCapsPod.Spec.Containers[0].SecurityContext.Capabilities = &api.Capabilities{
 		Add: []api.Capability{"foo"},
@@ -1167,7 +1159,6 @@ func TestGenerateContainerSecurityContextReadOnlyRootFS(t *testing.T) {
 }
 
 func defaultPSP() *policy.PodSecurityPolicy {
-	allowPrivilegeEscalation := true
 	return &policy.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "psp-sa",
@@ -1176,9 +1167,6 @@ func defaultPSP() *policy.PodSecurityPolicy {
 		Spec: policy.PodSecurityPolicySpec{
 			RunAsUser: policy.RunAsUserStrategyOptions{
 				Rule: policy.RunAsUserStrategyRunAsAny,
-			},
-			RunAsGroup: &policy.RunAsGroupStrategyOptions{
-				Rule: policy.RunAsGroupStrategyRunAsAny,
 			},
 			SELinux: policy.SELinuxStrategyOptions{
 				Rule: policy.SELinuxStrategyRunAsAny,
@@ -1189,7 +1177,7 @@ func defaultPSP() *policy.PodSecurityPolicy {
 			SupplementalGroups: policy.SupplementalGroupsStrategyOptions{
 				Rule: policy.SupplementalGroupsStrategyRunAsAny,
 			},
-			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			AllowPrivilegeEscalation: true,
 		},
 	}
 }
@@ -1345,7 +1333,7 @@ func TestAllowPrivilegeEscalation(t *testing.T) {
 			pod.Spec.Containers[0].SecurityContext.AllowPrivilegeEscalation = test.podAPE
 
 			psp := defaultPSP()
-			psp.Spec.AllowPrivilegeEscalation = &test.pspAPE
+			psp.Spec.AllowPrivilegeEscalation = test.pspAPE
 			psp.Spec.DefaultAllowPrivilegeEscalation = test.pspDAPE
 
 			provider, err := NewSimpleProvider(psp, "namespace", NewSimpleStrategyFactory())

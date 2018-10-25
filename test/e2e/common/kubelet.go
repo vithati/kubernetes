@@ -41,11 +41,11 @@ var _ = framework.KubeDescribe("Kubelet", func() {
 		podName := "busybox-scheduling-" + string(uuid.NewUUID())
 
 		/*
-			Release : v1.13
+			Release : v1.9
 			Testname: Kubelet, log output, default
 			Description: By default the stdout and stderr from the process being executed in a pod MUST be sent to the pod's logs.
 		*/
-		framework.ConformanceIt("should print the output to logs [NodeConformance]", func() {
+		It("should print the output to logs [NodeConformance]", func() {
 			podClient.CreateSync(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: podName,
@@ -98,12 +98,7 @@ var _ = framework.KubeDescribe("Kubelet", func() {
 			})
 		})
 
-		/*
-			Release : v1.13
-			Testname: Kubelet, failed pod, terminated reason
-			Description: Create a Pod with terminated state. Pod MUST have only one container. Container MUST be in terminated state and MUST have an terminated reason.
-		*/
-		framework.ConformanceIt("should have an terminated reason [NodeConformance]", func() {
+		It("should have an terminated reason [NodeConformance]", func() {
 			Eventually(func() error {
 				podData, err := podClient.Get(podName, metav1.GetOptions{})
 				if err != nil {
@@ -123,12 +118,7 @@ var _ = framework.KubeDescribe("Kubelet", func() {
 			}, time.Minute, time.Second*4).Should(BeNil())
 		})
 
-		/*
-			Release : v1.13
-			Testname: Kubelet, failed pod, delete
-			Description: Create a Pod with terminated state. This terminated pod MUST be able to be deleted.
-		*/
-		framework.ConformanceIt("should be possible to delete [NodeConformance]", func() {
+		It("should be possible to delete [NodeConformance]", func() {
 			err := podClient.Delete(podName, &metav1.DeleteOptions{})
 			Expect(err).To(BeNil(), fmt.Sprintf("Error deleting Pod %v", err))
 		})
@@ -136,12 +126,7 @@ var _ = framework.KubeDescribe("Kubelet", func() {
 	Context("when scheduling a busybox Pod with hostAliases", func() {
 		podName := "busybox-host-aliases" + string(uuid.NewUUID())
 
-		/*
-			Release : v1.13
-			Testname: Kubelet, hostAliases
-			Description: Create a Pod with hostAliases and a container with command to output /etc/hosts entries. Pod's logs MUST have matching entries of specified hostAliases to the output of /etc/hosts entries.
-		*/
-		framework.ConformanceIt("should write entries to /etc/hosts [NodeConformance]", func() {
+		It("should write entries to /etc/hosts [NodeConformance]", func() {
 			podClient.CreateSync(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: podName,
@@ -186,12 +171,7 @@ var _ = framework.KubeDescribe("Kubelet", func() {
 	Context("when scheduling a read only busybox container", func() {
 		podName := "busybox-readonly-fs" + string(uuid.NewUUID())
 
-		/*
-			Release : v1.13
-			Testname: Kubelet, pod with read only root file system
-			Description: Create a Pod with security context set with ReadOnlyRootFileSystem set to true. The Pod then tries to write to the /file on the root, write operation to the root filesystem MUST fail as expected.
-		*/
-		framework.ConformanceIt("should not write to root filesystem [NodeConformance]", func() {
+		It("should not write to root filesystem [NodeConformance]", func() {
 			isReadOnly := true
 			podClient.CreateSync(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{

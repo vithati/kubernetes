@@ -68,23 +68,19 @@ func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation 
 	fakeReq := &http.Request{Header: http.Header{}}
 	fakeReq.Header.Add("Authorization", "Bearer "+tokenReview.Spec.Token)
 
-	resp, ok, err := r.tokenAuthenticator.AuthenticateRequest(fakeReq)
+	tokenUser, ok, err := r.tokenAuthenticator.AuthenticateRequest(fakeReq)
 	tokenReview.Status.Authenticated = ok
 	if err != nil {
 		tokenReview.Status.Error = err.Error()
 	}
-
-	// TODO(mikedanese): verify the response audience matches one of apiAuds if
-	// non-empty
-
-	if resp != nil && resp.User != nil {
+	if tokenUser != nil {
 		tokenReview.Status.User = authentication.UserInfo{
-			Username: resp.User.GetName(),
-			UID:      resp.User.GetUID(),
-			Groups:   resp.User.GetGroups(),
+			Username: tokenUser.GetName(),
+			UID:      tokenUser.GetUID(),
+			Groups:   tokenUser.GetGroups(),
 			Extra:    map[string]authentication.ExtraValue{},
 		}
-		for k, v := range resp.User.GetExtra() {
+		for k, v := range tokenUser.GetExtra() {
 			tokenReview.Status.User.Extra[k] = authentication.ExtraValue(v)
 		}
 	}

@@ -5,6 +5,3 @@ reviewers:
 approvers:
   - mml
   - cheftako
-labels:
-  - area/conformance
-  - sig/architecture

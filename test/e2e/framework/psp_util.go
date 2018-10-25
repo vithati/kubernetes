@@ -113,9 +113,7 @@ func CreatePrivilegedPSPBinding(f *Framework, namespace string) {
 
 		psp := PrivilegedPSP(podSecurityPolicyPrivileged)
 		psp, err = f.ClientSet.ExtensionsV1beta1().PodSecurityPolicies().Create(psp)
-		if !apierrs.IsAlreadyExists(err) {
-			ExpectNoError(err, "Failed to create PSP %s", podSecurityPolicyPrivileged)
-		}
+		ExpectNoError(err, "Failed to create PSP %s", podSecurityPolicyPrivileged)
 
 		if IsRBACEnabled(f) {
 			// Create the Role to bind it to the namespace.
@@ -128,9 +126,7 @@ func CreatePrivilegedPSPBinding(f *Framework, namespace string) {
 					Verbs:         []string{"use"},
 				}},
 			})
-			if !apierrs.IsAlreadyExists(err) {
-				ExpectNoError(err, "Failed to create PSP role")
-			}
+			ExpectNoError(err, "Failed to create PSP role")
 		}
 	})
 

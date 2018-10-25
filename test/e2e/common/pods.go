@@ -472,13 +472,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		}, maxRetries, "Container should have service environment variables set")
 	})
 
-	/*
-		Release : v1.13
-		Testname: Pods, remote command execution over websocket
-		Description: A Pod is created. Websocket is created to retrieve exec command output from this pod.
-		Message retrieved form Websocket MUST match with expected exec command output.
-	*/
-	framework.ConformanceIt("should support remote command execution over websockets [NodeConformance]", func() {
+	It("should support remote command execution over websockets [NodeConformance]", func() {
 		config, err := framework.LoadConfig()
 		Expect(err).NotTo(HaveOccurred(), "unable to get base config")
 
@@ -554,13 +548,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 		}, time.Minute, 10*time.Second).Should(BeNil())
 	})
 
-	/*
-		Release : v1.13
-		Testname: Pods, logs from websockets
-		Description: A Pod is created. Websocket is created to retrieve log of a container from this pod.
-		Message retrieved form Websocket MUST match with container's output.
-	*/
-	framework.ConformanceIt("should support retrieving logs from the container over websockets [NodeConformance]", func() {
+	It("should support retrieving logs from the container over websockets [NodeConformance]", func() {
 		config, err := framework.LoadConfig()
 		Expect(err).NotTo(HaveOccurred(), "unable to get base config")
 

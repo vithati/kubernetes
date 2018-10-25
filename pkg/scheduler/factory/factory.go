@@ -48,19 +48,18 @@ import (
 	policylisters "k8s.io/client-go/listers/policy/v1beta1"
 	storagelisters "k8s.io/client-go/listers/storage/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
+	"k8s.io/kubernetes/pkg/scheduler"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/scheduler/api/validation"
+	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 	"k8s.io/kubernetes/pkg/scheduler/core"
 	"k8s.io/kubernetes/pkg/scheduler/core/equivalence"
-	schedulerinternalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
-	cachecomparer "k8s.io/kubernetes/pkg/scheduler/internal/cache/comparer"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	"k8s.io/kubernetes/pkg/scheduler/util"
 	"k8s.io/kubernetes/pkg/scheduler/volumebinder"
@@ -78,98 +77,6 @@ var (
 	noDiskConflictSet             = sets.NewString(predicates.NoDiskConflictPred)
 	maxPDVolumeCountPredicateKeys = []string{predicates.MaxGCEPDVolumeCountPred, predicates.MaxAzureDiskVolumeCountPred, predicates.MaxEBSVolumeCountPred}
 )
-
-// Binder knows how to write a binding.
-type Binder interface {
-	Bind(binding *v1.Binding) error
-}
-
-// PodConditionUpdater updates the condition of a pod based on the passed
-// PodCondition
-type PodConditionUpdater interface {
-	Update(pod *v1.Pod, podCondition *v1.PodCondition) error
-}
-
-// Config is an implementation of the Scheduler's configured input data.
-// TODO over time we should make this struct a hidden implementation detail of the scheduler.
-type Config struct {
-	// It is expected that changes made via SchedulerCache will be observed
-	// by NodeLister and Algorithm.
-	SchedulerCache schedulerinternalcache.Cache
-	// Ecache is used for optimistically invalid affected cache items after
-	// successfully binding a pod
-	Ecache     *equivalence.Cache
-	NodeLister algorithm.NodeLister
-	Algorithm  algorithm.ScheduleAlgorithm
-	GetBinder  func(pod *v1.Pod) Binder
-	// PodConditionUpdater is used only in case of scheduling errors. If we succeed
-	// with scheduling, PodScheduled condition will be updated in apiserver in /bind
-	// handler so that binding and setting PodCondition it is atomic.
-	PodConditionUpdater PodConditionUpdater
-	// PodPreemptor is used to evict pods and update pod annotations.
-	PodPreemptor PodPreemptor
-
-	// NextPod should be a function that blocks until the next pod
-	// is available. We don't use a channel for this, because scheduling
-	// a pod may take some amount of time and we don't want pods to get
-	// stale while they sit in a channel.
-	NextPod func() *v1.Pod
-
-	// WaitForCacheSync waits for scheduler cache to populate.
-	// It returns true if it was successful, false if the controller should shutdown.
-	WaitForCacheSync func() bool
-
-	// Error is called if there is an error. It is passed the pod in
-	// question, and the error
-	Error func(*v1.Pod, error)
-
-	// Recorder is the EventRecorder to use
-	Recorder record.EventRecorder
-
-	// Close this to shut down the scheduler.
-	StopEverything chan struct{}
-
-	// VolumeBinder handles PVC/PV binding for the pod.
-	VolumeBinder *volumebinder.VolumeBinder
-
-	// Disable pod preemption or not.
-	DisablePreemption bool
-}
-
-// PodPreemptor has methods needed to delete a pod and to update
-// annotations of the preemptor pod.
-type PodPreemptor interface {
-	GetUpdatedPod(pod *v1.Pod) (*v1.Pod, error)
-	DeletePod(pod *v1.Pod) error
-	SetNominatedNodeName(pod *v1.Pod, nominatedNode string) error
-	RemoveNominatedNodeName(pod *v1.Pod) error
-}
-
-// Configurator defines I/O, caching, and other functionality needed to
-// construct a new scheduler. An implementation of this can be seen in
-// factory.go.
-type Configurator interface {
-	// Exposed for testing
-	GetHardPodAffinitySymmetricWeight() int32
-	// Exposed for testing
-	MakeDefaultErrorFunc(backoff *util.PodBackoff, podQueue internalqueue.SchedulingQueue) func(pod *v1.Pod, err error)
-
-	// Predicate related accessors to be exposed for use by k8s.io/autoscaler/cluster-autoscaler
-	GetPredicateMetadataProducer() (algorithm.PredicateMetadataProducer, error)
-	GetPredicates(predicateKeys sets.String) (map[string]algorithm.FitPredicate, error)
-
-	// Needs to be exposed for things like integration tests where we want to make fake nodes.
-	GetNodeLister() corelisters.NodeLister
-	// Exposed for testing
-	GetClient() clientset.Interface
-	// Exposed for testing
-	GetScheduledPodLister() corelisters.PodLister
-
-	Create() (*Config, error)
-	CreateFromProvider(providerName string) (*Config, error)
-	CreateFromConfig(policy schedulerapi.Policy) (*Config, error)
-	CreateFromKeys(predicateKeys, priorityKeys sets.String, extenders []algorithm.SchedulerExtender) (*Config, error)
-}
 
 // configFactory is the default implementation of the scheduler.Configurator interface.
 type configFactory struct {
@@ -204,7 +111,7 @@ type configFactory struct {
 
 	scheduledPodsHasSynced cache.InformerSynced
 
-	schedulerCache schedulerinternalcache.Cache
+	schedulerCache schedulercache.Cache
 
 	// SchedulerName of a scheduler is used to select which pods will be
 	// processed by this scheduler, based on pods's "spec.schedulerName".
@@ -257,9 +164,9 @@ type ConfigFactoryArgs struct {
 
 // NewConfigFactory initializes the default implementation of a Configurator. To encourage eventual privatization of the struct type, we only
 // return the interface.
-func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
+func NewConfigFactory(args *ConfigFactoryArgs) scheduler.Configurator {
 	stopEverything := make(chan struct{})
-	schedulerCache := schedulerinternalcache.New(30*time.Second, stopEverything)
+	schedulerCache := schedulercache.New(30*time.Second, stopEverything)
 
 	// storageClassInformer is only enabled through VolumeScheduling feature gate
 	var storageClassLister storagelisters.StorageClassLister
@@ -295,10 +202,10 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
 				case *v1.Pod:
-					return assignedPod(t)
+					return assignedNonTerminatedPod(t)
 				case cache.DeletedFinalStateUnknown:
 					if pod, ok := t.Obj.(*v1.Pod); ok {
-						return assignedPod(pod)
+						return assignedNonTerminatedPod(pod)
 					}
 					runtime.HandleError(fmt.Errorf("unable to convert object %T to *v1.Pod in %T", obj, c))
 					return false
@@ -320,10 +227,10 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
 				case *v1.Pod:
-					return !assignedPod(t) && responsibleForPod(t, args.SchedulerName)
+					return unassignedNonTerminatedPod(t) && responsibleForPod(t, args.SchedulerName)
 				case cache.DeletedFinalStateUnknown:
 					if pod, ok := t.Obj.(*v1.Pod); ok {
-						return !assignedPod(pod) && responsibleForPod(pod, args.SchedulerName)
+						return unassignedNonTerminatedPod(pod) && responsibleForPod(pod, args.SchedulerName)
 					}
 					runtime.HandleError(fmt.Errorf("unable to convert object %T to *v1.Pod in %T", obj, c))
 					return false
@@ -398,12 +305,12 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 	}
 
 	// Setup cache comparer
-	comparer := cachecomparer.New(
-		args.NodeInformer.Lister(),
-		args.PodInformer.Lister(),
-		c.schedulerCache,
-		c.podQueue,
-	)
+	comparer := &cacheComparer{
+		podLister:  args.PodInformer.Lister(),
+		nodeLister: args.NodeInformer.Lister(),
+		cache:      c.schedulerCache,
+		podQueue:   c.podQueue,
+	}
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, compareSignal)
@@ -1085,12 +992,12 @@ func (c *configFactory) deleteNodeFromCache(obj interface{}) {
 }
 
 // Create creates a scheduler with the default algorithm provider.
-func (c *configFactory) Create() (*Config, error) {
+func (c *configFactory) Create() (*scheduler.Config, error) {
 	return c.CreateFromProvider(DefaultProvider)
 }
 
 // Creates a scheduler from the name of a registered algorithm provider.
-func (c *configFactory) CreateFromProvider(providerName string) (*Config, error) {
+func (c *configFactory) CreateFromProvider(providerName string) (*scheduler.Config, error) {
 	glog.V(2).Infof("Creating scheduler from algorithm provider '%v'", providerName)
 	provider, err := GetAlgorithmProvider(providerName)
 	if err != nil {
@@ -1101,7 +1008,7 @@ func (c *configFactory) CreateFromProvider(providerName string) (*Config, error)
 }
 
 // Creates a scheduler from the configuration file
-func (c *configFactory) CreateFromConfig(policy schedulerapi.Policy) (*Config, error) {
+func (c *configFactory) CreateFromConfig(policy schedulerapi.Policy) (*scheduler.Config, error) {
 	glog.V(2).Infof("Creating scheduler from configuration: %v", policy)
 
 	// validate the policy configuration
@@ -1172,7 +1079,7 @@ func (c *configFactory) CreateFromConfig(policy schedulerapi.Policy) (*Config, e
 }
 
 // getBinderFunc returns an func which returns an extender that supports bind or a default binder based on the given pod.
-func (c *configFactory) getBinderFunc(extenders []algorithm.SchedulerExtender) func(pod *v1.Pod) Binder {
+func (c *configFactory) getBinderFunc(extenders []algorithm.SchedulerExtender) func(pod *v1.Pod) scheduler.Binder {
 	var extenderBinder algorithm.SchedulerExtender
 	for i := range extenders {
 		if extenders[i].IsBinder() {
@@ -1181,7 +1088,7 @@ func (c *configFactory) getBinderFunc(extenders []algorithm.SchedulerExtender) f
 		}
 	}
 	defaultBinder := &binder{c.client}
-	return func(pod *v1.Pod) Binder {
+	return func(pod *v1.Pod) scheduler.Binder {
 		if extenderBinder != nil && extenderBinder.IsInterested(pod) {
 			return extenderBinder
 		}
@@ -1190,7 +1097,7 @@ func (c *configFactory) getBinderFunc(extenders []algorithm.SchedulerExtender) f
 }
 
 // Creates a scheduler from a set of registered fit predicate keys and priority keys.
-func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, extenders []algorithm.SchedulerExtender) (*Config, error) {
+func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, extenders []algorithm.SchedulerExtender) (*scheduler.Config, error) {
 	glog.V(2).Infof("Creating scheduler with fit predicates '%v' and priority functions '%v'", predicateKeys, priorityKeys)
 
 	if c.GetHardPodAffinitySymmetricWeight() < 1 || c.GetHardPodAffinitySymmetricWeight() > 100 {
@@ -1241,7 +1148,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 	)
 
 	podBackoff := util.CreateDefaultPodBackoff()
-	return &Config{
+	return &scheduler.Config{
 		SchedulerCache: c.schedulerCache,
 		Ecache:         c.equivalencePodCache,
 		// The scheduler only needs to consider schedulable nodes.
@@ -1333,9 +1240,26 @@ func (c *configFactory) getNextPod() *v1.Pod {
 	return nil
 }
 
-// assignedPod selects pods that are assigned (scheduled and running).
-func assignedPod(pod *v1.Pod) bool {
-	return len(pod.Spec.NodeName) != 0
+// unassignedNonTerminatedPod selects pods that are unassigned and non-terminal.
+func unassignedNonTerminatedPod(pod *v1.Pod) bool {
+	if len(pod.Spec.NodeName) != 0 {
+		return false
+	}
+	if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
+		return false
+	}
+	return true
+}
+
+// assignedNonTerminatedPod selects pods that are assigned and non-terminal (scheduled and running).
+func assignedNonTerminatedPod(pod *v1.Pod) bool {
+	if len(pod.Spec.NodeName) == 0 {
+		return false
+	}
+	if pod.Status.Phase == v1.PodSucceeded || pod.Status.Phase == v1.PodFailed {
+		return false
+	}
+	return true
 }
 
 // responsibleForPod returns true if the pod has asked to be scheduled by the given scheduler.

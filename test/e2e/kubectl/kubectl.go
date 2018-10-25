@@ -58,7 +58,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/test/e2e/framework"
-	"k8s.io/kubernetes/test/e2e/framework/testfiles"
+	"k8s.io/kubernetes/test/e2e/generated"
 	"k8s.io/kubernetes/test/e2e/scheduling"
 	testutils "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
@@ -79,8 +79,6 @@ const (
 	simplePodPort            = 80
 	pausePodSelector         = "name=pause"
 	pausePodName             = "pause"
-	busyboxPodSelector       = "app=busybox1"
-	busyboxPodName           = "busybox1"
 	runJobTimeout            = 5 * time.Minute
 	kubeCtlManifestPath      = "test/e2e/testing-manifests/kubectl"
 	redisControllerFilename  = "redis-master-controller.json.in"
@@ -152,7 +150,7 @@ func substituteImageName(content string) string {
 }
 
 func readTestFileOrDie(file string) []byte {
-	return testfiles.ReadOrDie(path.Join(kubeCtlManifestPath, file), Fail)
+	return generated.ReadOrDie(path.Join(kubeCtlManifestPath, file))
 }
 
 func runKubectlRetryOrDie(args ...string) string {
@@ -294,8 +292,8 @@ var _ = SIGDescribe("Kubectl client", func() {
 		var nautilus, kitten string
 		BeforeEach(func() {
 			updateDemoRoot := "test/fixtures/doc-yaml/user-guide/update-demo"
-			nautilus = substituteImageName(string(testfiles.ReadOrDie(filepath.Join(updateDemoRoot, "nautilus-rc.yaml.in"), Fail)))
-			kitten = substituteImageName(string(testfiles.ReadOrDie(filepath.Join(updateDemoRoot, "kitten-rc.yaml.in"), Fail)))
+			nautilus = substituteImageName(string(generated.ReadOrDie(filepath.Join(updateDemoRoot, "nautilus-rc.yaml.in"))))
+			kitten = substituteImageName(string(generated.ReadOrDie(filepath.Join(updateDemoRoot, "kitten-rc.yaml.in"))))
 		})
 		/*
 			Release : v1.9
@@ -359,7 +357,7 @@ var _ = SIGDescribe("Kubectl client", func() {
 				"redis-master-deployment.yaml.in",
 				"redis-slave-deployment.yaml.in",
 			} {
-				contents := substituteImageName(string(testfiles.ReadOrDie(filepath.Join(guestbookRoot, gbAppFile), Fail)))
+				contents := substituteImageName(string(generated.ReadOrDie(filepath.Join(guestbookRoot, gbAppFile))))
 				run(contents)
 			}
 		}
@@ -385,10 +383,9 @@ var _ = SIGDescribe("Kubectl client", func() {
 	})
 
 	framework.KubeDescribe("Simple pod", func() {
-		var podYaml string
+		podYaml := substituteImageName(string(readTestFileOrDie("pod-with-readiness-probe.yaml.in")))
 		BeforeEach(func() {
 			By(fmt.Sprintf("creating the pod from %v", podYaml))
-			podYaml = substituteImageName(string(readTestFileOrDie("pod-with-readiness-probe.yaml.in")))
 			framework.RunKubectlOrDieInput(podYaml, "create", "-f", "-", fmt.Sprintf("--namespace=%v", ns))
 			Expect(framework.CheckPodsRunningReady(c, ns, []string{simplePodName}, framework.PodStartTimeout)).To(BeTrue())
 		})
@@ -847,13 +844,6 @@ metadata:
 		})
 	})
 
-	framework.KubeDescribe("Kubectl cluster-info dump", func() {
-		It("should check if cluster-info dump succeeds", func() {
-			By("running cluster-info dump")
-			framework.RunKubectlOrDie("cluster-info", "dump")
-		})
-	})
-
 	framework.KubeDescribe("Kubectl describe", func() {
 		/*
 			Release : v1.9
@@ -1047,11 +1037,10 @@ metadata:
 	})
 
 	framework.KubeDescribe("Kubectl label", func() {
-		var podYaml string
+		podYaml := substituteImageName(string(readTestFileOrDie("pause-pod.yaml.in")))
 		var nsFlag string
 		BeforeEach(func() {
 			By("creating the pod")
-			podYaml = substituteImageName(string(readTestFileOrDie("pause-pod.yaml.in")))
 			nsFlag = fmt.Sprintf("--namespace=%v", ns)
 			framework.RunKubectlOrDieInput(podYaml, "create", "-f", "-", nsFlag)
 			Expect(framework.CheckPodsRunningReady(c, ns, []string{pausePodName}, framework.PodStartTimeout)).To(BeTrue())
@@ -1087,53 +1076,12 @@ metadata:
 		})
 	})
 
-	framework.KubeDescribe("Kubectl copy", func() {
-		var podYaml string
-		var nsFlag string
-		BeforeEach(func() {
-			By("creating the pod")
-			nsFlag = fmt.Sprintf("--namespace=%v", ns)
-			podYaml = substituteImageName(string(readTestFileOrDie("busybox-pod.yaml")))
-			framework.RunKubectlOrDieInput(podYaml, "create", "-f", "-", nsFlag)
-			Expect(framework.CheckPodsRunningReady(c, ns, []string{busyboxPodName}, framework.PodStartTimeout)).To(BeTrue())
-		})
-		AfterEach(func() {
-			cleanupKubectlInputs(podYaml, ns, busyboxPodSelector)
-		})
-
-		/*
-			Release : v1.12
-			Testname: Kubectl, copy
-			Description: When a Pod is running, copy a known file from it to a temporary local destination.
-		*/
-		It("should copy a file from a running Pod", func() {
-			remoteContents := "foobar\n"
-			podSource := fmt.Sprintf("%s:/root/foo/bar/foo.bar", busyboxPodName)
-			tempDestination, err := ioutil.TempFile(os.TempDir(), "copy-foobar")
-			if err != nil {
-				framework.Failf("Failed creating temporary destination file: %v", err)
-			}
-
-			By("specifying a remote filepath " + podSource + " on the pod")
-			framework.RunKubectlOrDie("cp", podSource, tempDestination.Name(), nsFlag)
-			By("verifying that the contents of the remote file " + podSource + " have been copied to a local file " + tempDestination.Name())
-			localData, err := ioutil.ReadAll(tempDestination)
-			if err != nil {
-				framework.Failf("Failed reading temporary local file: %v", err)
-			}
-			if string(localData) != remoteContents {
-				framework.Failf("Failed copying remote file contents. Expected %s but got %s", remoteContents, string(localData))
-			}
-		})
-	})
-
 	framework.KubeDescribe("Kubectl logs", func() {
 		var nsFlag string
-		var rc string
+		rc := substituteImageName(string(readTestFileOrDie(redisControllerFilename)))
 		containerName := "redis-master"
 		BeforeEach(func() {
 			By("creating an rc")
-			rc = substituteImageName(string(readTestFileOrDie(redisControllerFilename)))
 			nsFlag = fmt.Sprintf("--namespace=%v", ns)
 			framework.RunKubectlOrDieInput(rc, "create", "-f", "-", nsFlag)
 		})

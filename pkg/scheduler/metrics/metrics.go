@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"k8s.io/kubernetes/pkg/controller/volume/persistentvolume"
 )
 
 const (
@@ -172,8 +171,6 @@ func Register() {
 		for _, metric := range metricsList {
 			prometheus.MustRegister(metric)
 		}
-
-		persistentvolume.RegisterVolumeSchedulingMetrics()
 	})
 }
 

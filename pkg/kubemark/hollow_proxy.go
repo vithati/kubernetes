@@ -18,9 +18,11 @@ package kubemark
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -88,7 +90,7 @@ func NewHollowProxyOrDie(
 			0,
 			"10.0.0.0/8",
 			nodeName,
-			utilnode.GetNodeIP(client, nodeName),
+			getNodeIP(client, nodeName),
 			recorder,
 			nil,
 			[]string{},
@@ -135,4 +137,19 @@ func (hp *HollowProxy) Run() {
 	if err := hp.ProxyServer.Run(); err != nil {
 		glog.Fatalf("Error while running proxy: %v\n", err)
 	}
+}
+
+func getNodeIP(client clientset.Interface, hostname string) net.IP {
+	var nodeIP net.IP
+	node, err := client.CoreV1().Nodes().Get(hostname, metav1.GetOptions{})
+	if err != nil {
+		glog.Warningf("Failed to retrieve node info: %v", err)
+		return nil
+	}
+	nodeIP, err = utilnode.GetNodeHostIP(node)
+	if err != nil {
+		glog.Warningf("Failed to retrieve node IP: %v", err)
+		return nil
+	}
+	return nodeIP
 }

@@ -31,7 +31,7 @@ func init() {
 
 type prometheusMetricsProvider struct{}
 
-func (prometheusMetricsProvider) NewDepthMetric(name string) workqueue.GaugeMetric {
+func (_ prometheusMetricsProvider) NewDepthMetric(name string) workqueue.GaugeMetric {
 	depth := prometheus.NewGauge(prometheus.GaugeOpts{
 		Subsystem: name,
 		Name:      "depth",
@@ -41,7 +41,7 @@ func (prometheusMetricsProvider) NewDepthMetric(name string) workqueue.GaugeMetr
 	return depth
 }
 
-func (prometheusMetricsProvider) NewAddsMetric(name string) workqueue.CounterMetric {
+func (_ prometheusMetricsProvider) NewAddsMetric(name string) workqueue.CounterMetric {
 	adds := prometheus.NewCounter(prometheus.CounterOpts{
 		Subsystem: name,
 		Name:      "adds",
@@ -51,7 +51,7 @@ func (prometheusMetricsProvider) NewAddsMetric(name string) workqueue.CounterMet
 	return adds
 }
 
-func (prometheusMetricsProvider) NewLatencyMetric(name string) workqueue.SummaryMetric {
+func (_ prometheusMetricsProvider) NewLatencyMetric(name string) workqueue.SummaryMetric {
 	latency := prometheus.NewSummary(prometheus.SummaryOpts{
 		Subsystem: name,
 		Name:      "queue_latency",
@@ -61,7 +61,7 @@ func (prometheusMetricsProvider) NewLatencyMetric(name string) workqueue.Summary
 	return latency
 }
 
-func (prometheusMetricsProvider) NewWorkDurationMetric(name string) workqueue.SummaryMetric {
+func (_ prometheusMetricsProvider) NewWorkDurationMetric(name string) workqueue.SummaryMetric {
 	workDuration := prometheus.NewSummary(prometheus.SummaryOpts{
 		Subsystem: name,
 		Name:      "work_duration",
@@ -71,7 +71,7 @@ func (prometheusMetricsProvider) NewWorkDurationMetric(name string) workqueue.Su
 	return workDuration
 }
 
-func (prometheusMetricsProvider) NewRetriesMetric(name string) workqueue.CounterMetric {
+func (_ prometheusMetricsProvider) NewRetriesMetric(name string) workqueue.CounterMetric {
 	retries := prometheus.NewCounter(prometheus.CounterOpts{
 		Subsystem: name,
 		Name:      "retries",
