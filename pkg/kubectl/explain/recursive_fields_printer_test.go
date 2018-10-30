@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	tst "k8s.io/kubernetes/pkg/kubectl/cmd/util/openapi/testing"
 )
 
 func TestRecursiveFields(t *testing.T) {
@@ -58,4 +59,64 @@ field2	<[]map[string]string>
 	if got != want {
 		t.Errorf("Got:\n%v\nWant:\n%v\n", buf.String(), want)
 	}
+}
+
+func TestRecursiveFieldsWithSelfReferenceObjects(t *testing.T) {
+	var resources = tst.NewFakeResources("test-selfreference-swagger.json")
+        schema := resources.LookupResource(schema.GroupVersionKind{
+                Group:   "",
+                Version: "v2",
+                Kind:    "OneKind",
+        })
+        if schema == nil {
+                t.Fatal("Couldn't find schema v2.OneKind")
+        }
+
+        want := `field1	<Object>
+   array	<[]integer>
+   int	<integer>
+   object	<map[string]string>
+   primitive	<string>
+   recursive1	<Object>
+   recursive2	<Object>
+   string	<string>
+field2	<[]map[string]string>
+field3	<[]map[string]Object>
+   referencefield1	<Object>
+      array	<[]integer>
+      int	<integer>
+      object	<map[string]string>
+      primitive	<string>
+      recursive1	<Object>
+      recursive2	<Object>
+      string	<string>
+   referencefield2	<Object>
+      field1	<Object>
+         array	<[]integer>
+         int	<integer>
+         object	<map[string]string>
+         primitive	<string>
+         recursive1	<Object>
+         recursive2	<Object>
+         string	<string>
+      field2	<[]map[string]string>
+      field3	<[]map[string]Object>
+`
+
+        buf := bytes.Buffer{}
+        f := Formatter{
+                Writer: &buf,
+                Wrap:   80,
+        }
+        s, err := LookupSchemaForField(schema, []string{})
+        if err != nil {
+                t.Fatalf("Invalid path %v: %v", []string{}, err)
+        }
+        if err := (fieldsPrinterBuilder{Recursive: true}).BuildFieldsPrinter(&f).PrintFields(s); err != nil {
+                t.Fatalf("Failed to print fields: %v", err)
+        }
+        got := buf.String()
+        if got != want {
+                t.Errorf("Got:\n%v\nWant:\n%v\n", buf.String(), want)
+        }
 }
