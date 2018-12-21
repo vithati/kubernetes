@@ -207,9 +207,562 @@ func TestSetImageRemote(t *testing.T) {
 		groupVersion schema.GroupVersion
 		path         string
 		args         []string
+		expectPatch  bool
+		expectedErr  string
 	}{
 		{
 			name: "set image extensionsv1beta1 ReplicaSet",
+			object: &extensionsv1beta1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta2 ReplicaSet",
+			object: &appsv1beta2.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta2.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta2.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1 ReplicaSet",
+			object: &appsv1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image extensionsv1beta1 DaemonSet",
+			object: &extensionsv1beta1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/daemonsets/nginx",
+			args:         []string{"daemonset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta2 DaemonSet",
+			object: &appsv1beta2.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta2.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta2.SchemeGroupVersion,
+			path:         "/namespaces/test/daemonsets/nginx",
+			args:         []string{"daemonset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1 DaemonSet",
+			object: &appsv1.DaemonSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1.DaemonSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1.SchemeGroupVersion,
+			path:         "/namespaces/test/daemonsets/nginx",
+			args:         []string{"daemonset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image extensionsv1beta1 Deployment",
+			object: &extensionsv1beta1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/deployments/nginx",
+			args:         []string{"deployment", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta1 Deployment",
+			object: &appsv1beta1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/deployments/nginx",
+			args:         []string{"deployment", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta2 Deployment",
+			object: &appsv1beta2.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta2.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta2.SchemeGroupVersion,
+			path:         "/namespaces/test/deployments/nginx",
+			args:         []string{"deployment", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1 Deployment",
+			object: &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1.SchemeGroupVersion,
+			path:         "/namespaces/test/deployments/nginx",
+			args:         []string{"deployment", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta1 StatefulSet",
+			object: &appsv1beta1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta1.StatefulSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/statefulsets/nginx",
+			args:         []string{"statefulset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1beta2 StatefulSet",
+			object: &appsv1beta2.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta2.StatefulSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta2.SchemeGroupVersion,
+			path:         "/namespaces/test/statefulsets/nginx",
+			args:         []string{"statefulset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image appsv1 StatefulSet",
+			object: &appsv1.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1.StatefulSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1.SchemeGroupVersion,
+			path:         "/namespaces/test/statefulsets/nginx",
+			args:         []string{"statefulset", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image batchv1 Job",
+			object: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: batchv1.SchemeGroupVersion,
+			path:         "/namespaces/test/jobs/nginx",
+			args:         []string{"job", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image corev1.ReplicationController",
+			object: &corev1.ReplicationController{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: corev1.ReplicationControllerSpec{
+					Template: &corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: corev1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicationcontrollers/nginx",
+			args:         []string{"replicationcontroller", "nginx", "*=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set image for multiple containers",
+			object: &appsv1beta1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: appsv1beta1.DeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: appsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/deployments/nginx",
+			args:         []string{"deployment", "nginx", "busybox=thingy", "nginx=thingy"},
+			expectPatch:  true,
+			expectedErr:  "",
+		},
+		{
+			name: "set non exist container image should throw error",
+			object: &extensionsv1beta1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "nonExistContainer=nginx"},
+			expectPatch:  false,
+			expectedErr:  "error: unable to find container named \"nonExistContainer\"",
+		},
+		{
+			name: "should not patch object as there are no changes in container images",
+			object: &extensionsv1beta1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "nginx=nginx"},
+			expectPatch:  false,
+			expectedErr:  "",
+		},
+		{
+			name: "should not patch object as there are no changes in init container images",
+			object: &extensionsv1beta1.ReplicaSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
+				Spec: extensionsv1beta1.ReplicaSetSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "nginx",
+									Image: "nginx",
+								},
+							},
+							InitContainers: []corev1.Container{
+								{
+									Name:  "busybox",
+									Image: "busybox",
+								},
+							},
+						},
+					},
+				},
+			},
+			groupVersion: extensionsv1beta1.SchemeGroupVersion,
+			path:         "/namespaces/test/replicasets/nginx",
+			args:         []string{"replicaset", "nginx", "busybox=busybox"},
+			expectPatch:  false,
+			expectedErr:  "",
+		},
+		{
+			name: "should patch valid container image and show error for non exist container",
 			object: &extensionsv1beta1.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
 				Spec: extensionsv1beta1.ReplicaSetSpec{
@@ -227,301 +780,9 @@ func TestSetImageRemote(t *testing.T) {
 			},
 			groupVersion: extensionsv1beta1.SchemeGroupVersion,
 			path:         "/namespaces/test/replicasets/nginx",
-			args:         []string{"replicaset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta2 ReplicaSet",
-			object: &appsv1beta2.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta2.ReplicaSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
-			args:         []string{"replicaset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1 ReplicaSet",
-			object: &appsv1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1.ReplicaSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicasets/nginx",
-			args:         []string{"replicaset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image extensionsv1beta1 DaemonSet",
-			object: &extensionsv1beta1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: extensionsv1beta1.DaemonSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
-			args:         []string{"daemonset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta2 DaemonSet",
-			object: &appsv1beta2.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta2.DaemonSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
-			args:         []string{"daemonset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1 DaemonSet",
-			object: &appsv1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1.DaemonSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/daemonsets/nginx",
-			args:         []string{"daemonset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image extensionsv1beta1 Deployment",
-			object: &extensionsv1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: extensionsv1beta1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: extensionsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
-			args:         []string{"deployment", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta1 Deployment",
-			object: &appsv1beta1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
-			args:         []string{"deployment", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta2 Deployment",
-			object: &appsv1beta2.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta2.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
-			args:         []string{"deployment", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1 Deployment",
-			object: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1.DeploymentSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/deployments/nginx",
-			args:         []string{"deployment", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta1 StatefulSet",
-			object: &appsv1beta1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta1.StatefulSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
-			args:         []string{"statefulset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1beta2 StatefulSet",
-			object: &appsv1beta2.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1beta2.StatefulSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1beta2.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
-			args:         []string{"statefulset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image appsv1 StatefulSet",
-			object: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: appsv1.StatefulSetSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: appsv1.SchemeGroupVersion,
-			path:         "/namespaces/test/statefulsets/nginx",
-			args:         []string{"statefulset", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image batchv1 Job",
-			object: &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: batchv1.JobSpec{
-					Template: corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: batchv1.SchemeGroupVersion,
-			path:         "/namespaces/test/jobs/nginx",
-			args:         []string{"job", "nginx", "*=thingy"},
-		},
-		{
-			name: "set image corev1.ReplicationController",
-			object: &corev1.ReplicationController{
-				ObjectMeta: metav1.ObjectMeta{Name: "nginx"},
-				Spec: corev1.ReplicationControllerSpec{
-					Template: &corev1.PodTemplateSpec{
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:  "nginx",
-									Image: "nginx",
-								},
-							},
-						},
-					},
-				},
-			},
-			groupVersion: corev1.SchemeGroupVersion,
-			path:         "/namespaces/test/replicationcontrollers/nginx",
-			args:         []string{"replicationcontroller", "nginx", "*=thingy"},
+			args:         []string{"replicaset", "nginx", "nginx=thingy", "nonExistContainer=nginx"},
+			expectPatch:  true,
+			expectedErr:  "error: unable to find container named \"nonExistContainer\"",
 		},
 	}
 	for _, input := range inputs {
@@ -537,6 +798,9 @@ func TestSetImageRemote(t *testing.T) {
 					case p == input.path && m == http.MethodGet:
 						return &http.Response{StatusCode: http.StatusOK, Header: cmdtesting.DefaultHeader(), Body: objBody(input.object)}, nil
 					case p == input.path && m == http.MethodPatch:
+						if !input.expectPatch {
+							return nil, fmt.Errorf("unexpected PATCH request")
+						}
 						stream, err := req.GetBody()
 						if err != nil {
 							return nil, err
@@ -568,7 +832,15 @@ func TestSetImageRemote(t *testing.T) {
 			err := opts.Complete(tf, cmd, input.args)
 			assert.NoError(t, err)
 			err = opts.Run()
-			assert.NoError(t, err)
+			if err != nil {
+				if err.Error() != input.expectedErr {
+					t.Errorf("[%s]:expect err:%s got err:%s", input.name, input.expectedErr, err.Error())
+				}
+			}
+			if err == nil && (input.expectedErr != "") {
+				t.Errorf("[%s]:expect err:%s got err:%v", input.name, input.expectedErr, err)
+			}
+
 		})
 	}
 }

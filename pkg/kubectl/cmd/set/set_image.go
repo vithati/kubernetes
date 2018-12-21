@@ -216,38 +216,16 @@ func (o *SetImageOptions) Run() error {
 	allErrs := []error{}
 
 	patches := CalculatePatches(o.Infos, scheme.DefaultJSONEncoder(), func(obj runtime.Object) ([]byte, error) {
-		transformed := false
+		initContainerUpdated := false
+		containerUpdated := false
+		initContainerFound := false
+		containerFound := false
 		_, err := o.UpdatePodSpecForObject(obj, func(spec *v1.PodSpec) error {
 			for name, image := range o.ContainerImages {
-				var (
-					containerFound bool
-					err            error
-					resolved       string
-				)
-				// Find the container to update, and update its image
-				for i, c := range spec.Containers {
-					if c.Name == name || name == "*" {
-						containerFound = true
-						if len(resolved) == 0 {
-							if resolved, err = o.ResolveImage(image); err != nil {
-								allErrs = append(allErrs, fmt.Errorf("error: unable to resolve image %q for container %q: %v", image, name, err))
-								// Do not loop again if the image resolving failed for wildcard case as we
-								// will report the same error again for the next container.
-								if name == "*" {
-									break
-								}
-								continue
-							}
-						}
-						if spec.Containers[i].Image != resolved {
-							spec.Containers[i].Image = resolved
-							// Perform updates
-							transformed = true
-						}
-					}
-				}
+				initContainerFound, initContainerUpdated = setImage(o, spec.InitContainers, name, image, allErrs)
+				containerFound, containerUpdated = setImage(o, spec.Containers, name, image, allErrs)
 				// Add a new container if not found
-				if !containerFound {
+				if !containerFound && !initContainerFound {
 					allErrs = append(allErrs, fmt.Errorf("error: unable to find container named %q", name))
 				}
 			}
@@ -256,7 +234,7 @@ func (o *SetImageOptions) Run() error {
 		if err != nil {
 			return nil, err
 		}
-		if !transformed {
+		if !containerUpdated && !initContainerUpdated {
 			return nil, nil
 		}
 		// record this change (for rollout history)
@@ -298,6 +276,38 @@ func (o *SetImageOptions) Run() error {
 		}
 	}
 	return utilerrors.NewAggregate(allErrs)
+}
+
+func setImage(o *SetImageOptions, containers []v1.Container, containerName string, image string, allErrs []error) (bool, bool) {
+	var (
+		containerFound bool
+		transformed    bool
+		err            error
+		resolved       string
+	)
+	// Find the container to update, and update its image
+	for i, c := range containers {
+		if c.Name == containerName || containerName == "*" {
+			containerFound = true
+			if len(resolved) == 0 {
+				if resolved, err = o.ResolveImage(image); err != nil {
+					allErrs = append(allErrs, fmt.Errorf("error: unable to resolve image %q for container %q: %v", image, containerName, err))
+					// Do not loop again if the image resolving failed for wildcard case as we
+					// will report the same error again for the next container.
+					if containerName == "*" {
+						break
+					}
+					continue
+				}
+			}
+			if containers[i].Image != resolved {
+				containers[i].Image = resolved
+				// Perform updates
+				transformed = true
+			}
+		}
+	}
+	return containerFound, transformed
 }
 
 // getResourcesAndImages retrieves resources and container name:images pair from given args
